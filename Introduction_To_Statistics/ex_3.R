@@ -1,7 +1,7 @@
 
 library(ggplot2)
 
-setwd("D:\\R_exercise")
+setwd("D:\\knou\\Introduction_To_Statistics")
 
 ##################################################
 
