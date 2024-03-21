@@ -1,4 +1,3 @@
-
 library(ggplot2)
 
 setwd("D:\\knou\\Introduction_To_Statistics")
