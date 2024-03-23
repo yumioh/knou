@@ -11,7 +11,7 @@ after_weight <- c(71,68,62,64,67,66,67,64,57,54,59,73)
 #t-검정 : 모집단의 분산이나 표준편차를 알지 못할때 표본으로부터 추정된 분산이나 표준편차를 갖고 검겅하는 방법
 #유의확률 : 확률분포와 표본값 1개가 주어졌을때 그 확률분포에서 해당 표본값 혹은 
 #더 희귀한 값이 나올 수 있는 확률
-t.test(after_weight, before_weight, paired = TRUE)
+t.test(after_weight, before_weight, alternative = "less", paired = "TRUE")
 #p-value = 0.4293
 #(4) 유의수준 5%에서 가설검정의 결론은 무엇인가?
 #p의 값 = 0.4293 > 0.05
