@@ -6,7 +6,7 @@ readingBooks <- c(5, 23, 20, 1, 10, 15, 15, 10, 9, 13, 18, 11, 18, 20, 19, 19)
 hist(readingBooks, main = "초등학생이 1년동안 읽은 책 수", xlab="권수", ylab = "학생수")
 
 # (2) 상자그림을 그리시오. (2점)
-boxplot(readingBooks,main = "초등학생이 1년동안 읽은 책 수", ylab="Values")
+boxplot(readingBooks,main = "초등학생이 1년동안 읽은 책 수", ylab="Books")
 
 # (3) 다섯수치요약을 산출하시오 (2점)
 # 다섯수치요약 : 최소값, 제1사분위수, 중앙값, 제3사분위수, 최대값
