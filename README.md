@@ -14,7 +14,7 @@
 4. 데이터정보처리입문 (Data_Info_Processor)  <br/>
  : 데이터 정보를 처리하는 방법을 배우는 입문 내용으로 컴퓨터를 활용하는 방법 및 데이터분석의 기초적인 방법을 다루고 있다. <br/> 특히 데이터 분석을 위한 소프트웨어로서 엑셀과 R, Python을 활용하여 데이터를 분석
 
-5. 학률의 개념과 응용 (Concept_of_Probability)  <br/>
+5. 확률의 개념과 응용 (Concept_of_Probability)  <br/>
  : 확률이 무엇이고 확률은 어떻게 활용되고 계산하는지 살펴봄
 
 7. R컴퓨팅 (R_Computing) <br/>
