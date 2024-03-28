@@ -15,5 +15,3 @@ library(help="rpart")
 #작업 경로 설정 가능
 #setwd("D:\\knou\\R_Computing")
 
-
-
