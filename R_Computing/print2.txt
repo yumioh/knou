@@ -1,0 +1,8 @@
+      var1         var2      
+ Min.   :11   Min.   :111.0  
+ 1st Qu.:22   1st Qu.:194.2  
+ Median :33   Median :333.0  
+ Mean   :33   Mean   :333.0  
+ 3rd Qu.:44   3rd Qu.:471.8  
+ Max.   :55   Max.   :555.0  
+              NA's   :1      
