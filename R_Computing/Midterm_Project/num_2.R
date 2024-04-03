@@ -16,7 +16,7 @@ head(airquality["TempC"], 10)
 
 #2)각 변수에 결측치가 몇개씩 존재하는지 확인
 
-#데이터 프레임에 결측값 개수 총 합계: 44
+#데이터 프레임에 결측값의 총 개수: 44
 sum(is.na(airquality))
 
 #방법1 : 각 변수별 결측치 개수
@@ -38,14 +38,15 @@ colSums(is.na(airquality))
 
 
 #3) Ozone이 40 이상인 날들에 대해서만 평균 Solar.R 평균
-
 #Ozone이 40 이상인 행만 추출
 fliteringAir <- airquality[airquality["Ozone"] >= 40, ]
-
-str(filtered_data)
-
-colSums(is.na(filtered_data))
-
+#10개의 행만 추출
+head(fliteringAir,10)
+#데이터 프레임 구조 확인
+str(fliteringAir)
+#결측값 개수 확인
+colSums(is.na(fliteringAir))
+#열의 값 출력
 fliteringAir$Solar.R
 
 #추출된 데이터에서 결측지를 제외한 Solar.R의 평균을 구함 : 218.2045
