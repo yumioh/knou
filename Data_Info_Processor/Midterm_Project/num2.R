@@ -30,3 +30,4 @@ bp <- boxplot(score, main ="socre", ylab="점수")
 print(bp$stats)
 #다섯가지 통계량 : 최소, 1사분위수, 중앙값, 3사분위수, 최대값
 fivenum(score)
+
