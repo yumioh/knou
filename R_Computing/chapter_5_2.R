@@ -13,5 +13,6 @@ klist
 length(klist)
 #자료 형태
 mode(klist)
-#각 성분의 이름
+#각 성분의 이름 출력
 names(klist)
+
