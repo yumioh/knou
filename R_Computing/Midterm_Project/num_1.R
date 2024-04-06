@@ -8,7 +8,8 @@ mean(x)
 #평균2
 sum(x)/length(x)
 #분산
-var(x)
+var2 <-var(x)
+round(var2, 2)
 #중앙값
 median(x)
 #기초통계량
@@ -21,8 +22,15 @@ y
 #4)추가된 결측치 NA를 제외하고, 벡터 y의 평균, 분산, 중앙값을 구하라
 #NA 여부 판단
 is.na(y)
-#연산에서 NA 제외옵션
-mean(y,na.rm = TRUE)
-var(y,na.rm = TRUE)
+#연산에서 NA 제외옵션, 
+#평균
+mean3 <- mean(y,na.rm = TRUE)
+round(mean1,2)
+#분산
+var3 <- var(y,na.rm = TRUE)
+round(var1, 2)
+#중앙값
 median(y,na.rm = TRUE)
+
+
 

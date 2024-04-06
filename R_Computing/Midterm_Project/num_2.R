@@ -6,7 +6,7 @@
 str(airquality)
 
 #섭씨 온도로 변환 후 TempC열에 저장
-airquality["TempC"] <- (airquality["Temp"]-32)*5/9
+airquality["TempC"] <- round((airquality["Temp"]-32)*5/9,2)
 
 #10개의 행만 출력하여 값 확인
 head(airquality,10)
@@ -50,6 +50,7 @@ colSums(is.na(fliteringAir))
 fliteringAir$Solar.R
 
 #추출된 데이터에서 결측지를 제외한 Solar.R의 평균을 구함 : 218.2045
-mean(fliteringAir$Solar.R, na.rm = TRUE)
+mean3 <- mean(fliteringAir$Solar.R, na.rm = TRUE)
+round(mean3,2)
 
 

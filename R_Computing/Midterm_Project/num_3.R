@@ -5,8 +5,10 @@ x
 length(x)
 
 #2) 12개의 NA를 갖는 grade라는 객체 생성
+#방법1
 grade <- rep(c(NA),12)
 grade
+#방법2
 grade2 <- rep(c(NA),length=12)
 grade2
 
