@@ -24,9 +24,9 @@ cofficient
 #줄기-잎 그림
 stem(score)
 #히스토그램
-hist(score, main = "score", xlab="점수", ylab = "빈도")
+hist(score, main = "Histogram of score", xlab="점수", ylab = "빈도")
 #상자그림
-bp <- boxplot(score, main ="socre", ylab="점수")
+bp <- boxplot(score, main ="통개학 개론 점수", ylab="점수")
 print(bp$stats)
 #다섯가지 통계량 : 최소, 1사분위수, 중앙값, 3사분위수, 최대값
 fivenum(score)
