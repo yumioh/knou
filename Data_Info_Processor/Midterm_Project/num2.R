@@ -14,7 +14,7 @@ var(score)
 #표본표준편차 : 20.10755
 sd(score)
 #사분위수범위 : 3사분위(57) - 1사분위(33) : 24
-iqr <- quantile(score, 0.75) - quantile(score, 0.25)
+iqr <-IQR(score)
 iqr
 #변동계수 : 표준편차 / 평균 : 0.4237972
 cofficient <- sd(score)/mean(score)
@@ -25,9 +25,17 @@ cofficient
 stem(score)
 #히스토그램
 hist(score, main = "Histogram of score", xlab="점수", ylab = "빈도")
+
 #상자그림
-bp <- boxplot(score, main ="통개학 개론 점수", ylab="점수")
+#boxplot 함수를 사용하여 상자 그림을 그리기
+boxstats <- boxplot(score, horizontal = TRUE, main ="통계학 개론 점수", ylab="점수")
+# 이상치 값만 선택하여 표시
+text(boxstats$out, 1, labels = boxstats$out, pos = 4)
+
 print(bp$stats)
 #다섯가지 통계량 : 최소, 1사분위수, 중앙값, 3사분위수, 최대값
 fivenum(score)
+
+
+
 
