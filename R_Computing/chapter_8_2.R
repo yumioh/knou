@@ -1,5 +1,4 @@
 #함수의 저장
-
 f1 <- function(x,y){
   return(x+y)
 }
@@ -34,4 +33,21 @@ f0 <- function(){
 #반드시 같이 괄호를 표시할것
 f0()
 
+f_default <- function(data,num=1){
+  d.min <- min(data)
+  d.max <- max(data)
+  switch (num, mean(data), var(data), c(d.min, d.max))
+}
 
+#기본값 1번 1:산술평균, 2:분산, 3: 범위
+f_default(x,3)
+
+#is.function() : 객체가 함수인지 아닌지 검증 T,F
+is.function(x)
+
+#args() : 매개변수들을 출력하는 함수
+args(f_default) #출력 : function (data, num = 1) 
+
+args(log)
+
+#attributes(f_default) : 함수의 소스 반환
