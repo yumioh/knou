@@ -93,3 +93,4 @@ fivenum(member)
 IQR(member)
 range(member)
 hist(member, breaks = 10)
+
