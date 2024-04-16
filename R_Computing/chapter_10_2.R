@@ -1,33 +1,82 @@
-library(ggplot2)
-library(MASS) #car93
-#상자그림과 실제 자료의 데이터 값까지 확인 가능
-#qplot이라는 함수에서 그룹변수와 y변수를 순서대로 지정
-#geom =c(boxplot, jitter) 옵션을 통해서 상자그림 생성
-#jitter는 실제 데이터를 상자위에 뿌려줌
-#fill=airbags 옵션은 airbags 그룹별로 상자그림의 색을 자동으로 다르게 지정
-#alpha = i(.2)는 상자의 투명도
+#install.packages("yarrr")
+#install.packages("gridExtra") : ggplot 그래프를 여러개 보여주기 위한 패키지
+library(yarrr)
+library(MASS)
+library(gridExtra)
 
 head(Cars93)
-
-#qplot으로 상자그림 그리기
-qplot(AirBags, Min.Price, data=Cars93, 
-      geom = c("boxplot","jitter"),
-      fill=AirBags,
-      ylab="Minimum Price", xlab="Airbags", alpha=I(.2))
-
-
-#ggplot를 활용하여 상자그림 그리기
-#ggplot(data) + geom_boxplot()
-#aes() : 매핑할 변수 넣음. 
-#예: aes(변수1, 변수2)라고 하면 x축을 변수1, y축을 변수 2
-#aes(color = 변수3)이면 변수 3값의 기반으로 색상 설정
-#scale_fill_viridis_d() : 색상 척도 함수
-#부가적인 옵션을 +을 통해 추가할 수 있다
-p <- ggplot(Cars93, aes(x = AirBags, y=Min.Price)) + 
-  geom_boxplot(aes(fill=AirBags))+ scale_fill_viridis_d()
-p
+#Parate Plot
+#박스플롯과 그림이 유사하지만 상자가 아닌 호리병 모양으로 나옴
+# 범주형이 2종류
+# origin : usa, non-usa
+# drivetrain : 4wd, front, rear
+# main : 제목
+#inf.method="iqr" : 사분위수 표현
+# point.o : 데이터의 포인터의 크기(0-1사이) 0에 가까울수록 데이터 포인트가 작아지고 1에 가까울수록 데이터 포인터가 큼
+pirateplot(formula = MPG.city ~ Origin + DriveTrain, point.o = 0.5,
+           data=Cars93, 
+           main="City MPG by Origin and Drive Train", 
+           inf.method="iqr")
 
 
+#그룹별 확률밀도함수 그리기
+#고속도로 연비 분포
+#geom_densit : 확률밀도 그리는 함수
+#labs : x,y lable 지정
+#ggtitle : 제목
+#theme : 모양 
+#hjust = 0.5: 가로 방향(수평)으로 텍스트를 가운데로 정렬하는 것을 지정합니다. 
+#hjust는 수평 정렬을 나타내는 매개변수로, 0은 왼쪽, 1은 오른쪽, 0.5는 가운데를 의미
+ggplot(Cars93, aes(x=MPG.highway)) + geom_density(aes(group=Type, colour=Type))+
+  labs(x="MPG.highway", y="Density")+
+  ggtitle("Desity of MPG in Highway by Type")+
+  theme(plot.title = element_text(hjust=0.5))
+
+
+#확률 밀도 함수 배경색 변경(회색 -> 흰색)
+ggplot(Cars93, aes(x=MPG.highway)) + geom_density(aes(group=Type, colour=Type))+
+  labs(x="MPG.highway", y="Density")+
+  ggtitle("Desity of MPG in Highway by Type")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_bw()
+
+
+#그림을 배열하기 위해서는 par(mfrow=c(2,2)) 옵션을 사용할 수 있는데 ggplot2패키지에서 사용 불가능
+#그래서 gridExtra 패키지 사용
+
+p1 <- ggplot(Cars93, aes(x=MPG.highway)) + geom_density(aes(group=Type, colour=Type))+
+  labs(x="MPG.highway", y="Density")+
+  ggtitle("Desity of MPG in Highway by Type")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_bw()
+
+
+p2 <- ggplot(Cars93, aes(x=MPG.highway)) + geom_density(aes(group=Origin, colour=Origin))+
+  labs(x="MPG.highway", y="Density")+
+  ggtitle("Desity of MPG in Highway by Origin")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_bw()
+
+#exrpession : 그래프을 더 이쁘게 만들기 위한 함수
+
+p3 <- ggplot(Cars93, aes(x=MPG.highway)) + 
+  geom_density(aes(group=Man.trans.avail, colour=Man.trans.avail))+
+  labs(x=expression("MPG"^highway), y=expression("Density"[value]))+
+  ggtitle("Desity of MPG in Highway \n by Manual transsmission availability")+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_bw()
+
+
+p4 <-  ggplot(Cars93, aes(x=MPG.highway)) + 
+  geom_density(aes(group=Man.trans.avail, colour=Man.trans.avail))+
+  labs(x=expression("MPG"^highway), y=expression("Density"[value]))+
+  ggtitle(expression(paste("Desity of MPG(",mu,")")^Highway))+
+  theme(plot.title = element_text(hjust=0.5))+
+  theme_bw()
+
+
+#4개 그래프를 동시에 보여줌 2행 2열
+grid.arrange(p1,p2,p3,p4, ncol=2, nrow=2)
 
 
 
