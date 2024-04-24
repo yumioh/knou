@@ -131,7 +131,7 @@ library(ggplot2)
 #type : 차량의 형태를 의미
 #생산지역과 에어백 여부 
 qplot(Wheelbase, Width, data=Cars93, shape=Type, color=Type, 
-      facets=Origin~AirBags, size=Length, xlab="Wheelbase", ylab="car width")
+      facets=Origin~AirBags,size=I(2), xlab="Wheelbase", ylab="car width")
 
 head(Cars93$Type)
 
