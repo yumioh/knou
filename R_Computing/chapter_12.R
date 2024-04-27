@@ -40,12 +40,12 @@ plot(v <- varclus(~., data=temp, similarity="spear"))
 
 
 #jpeg 그림 불려오기 
-install.packages("jpeg")
+#install.packages("jpeg")
 library(jpeg)
 
 sales.amount <- c(1.5,2.3,5.4,7.5,9,8)
 
-img <- readJPEG("c:/data/image.jpg")
+img <- readJPEG("c:/data/car.jpg")
 
 plot(c(0.5,6.5), c(0,10), axes = F, cex.lab=1.3,
      type='n',xlab="Month",ylab="Sales (in million dollars)")
@@ -60,5 +60,54 @@ for(jj in 1:6){
   rasterImage(img, jj-0.3, sales.amount[jj]-0.3, jj+0.3, sales.amount[jj]+0.3)
 }
 
+#png 파일 읽기
+install.packages("png")
+library(png)
 
+img <- readPNG("c:/data/car2.png")
+
+#axes : x,y축 출력 여부 cex.lab :x,y축 이름 크기 조정
+plot(c(1,6), c(15,46), cex.lab = 1.3, axes=T,
+     type='n',xlab="Engine Size",ylab="MPG in City")
+
+#x축 , y축, x축, y축
+rasterImage(img, 0.7, 14.5, 6.1, 46.0)
+
+#cex.axis: 각 축의 눈금 레이블 크기 조정
+#1은 x축 at: 눈금을 표시할 위치 labels: 각 눈금 위치에 표시될 레이블
+axis(1, at=c(1,2,3,4,5,6), labels = c('1','2','3','4','5','6'),cex.axis=1.2) #x축
+axis(2, at=seq(15,45,by=5), labels = seq(15,45,by=5), cex.axis=1.2) #y축
+
+#with(): 특정 데이터프레임을 사용하여 그래프를 그릴 때 유용한 함수
+# subset(Cars93, Origin=='USA') : 'Cars93' 데이터프레임에서 'Origin'이 'USA'인 행만 선택
+#points(): 산점도를 그리는 함수로, 이미 존재하는 그래프 위에 점을 추가
+#col=4: 점의 색상 pch 점모양
+with(subset(Cars93, Origin=='non-USA'), points(EngineSize, MPG.city, col=2, pch=16))
+with(subset(Cars93, Origin=='USA'), points(EngineSize, MPG.city, col=4, pch=16))
+
+#'topright': 범례를 그래프의 우측 상단에 배치
+#bty='n': 범례의 테두리를 없애 줌
+#col=c(2,4): 각 레이블에 대응하는 색상입니다. 여기서는 2와 4가 각각 'non-USA'와 'USA'를 나타냄
+#lwd=2: 범례의 선의 너비를 설정
+legend('topright', bty='n', c('non-USA','USA'), col=c(2,4), lwd=2, pch=16)
+
+#pos=4: 텍스트의 위치를 지정
+#2.3,35 : 텍스트 위치
+#col=1: 텍스트의 색상을 지정
+text(2.3, 35, pos=4, 'Cars in usa low mpgs in city, \nwhile having large engines compared \nto non-usa',
+     col=1)
+
+
+#파일 저장
+#jpeg 문장을 실행시키고 그림을 그리고 난 후 다시 dev.off()실행
+#저장 파일 형태에 따라 jpeg 함수 또는 pdf 함수 활용
+#width=6, height=6: 그림의 가로와 세로 크기
+#units='in': 가로와 세로의 단위를 인치로 설정
+#bg='white': 그림의 배경색을 지정
+jpeg(file = "mpg_engine_size.jpg", width=6, height=6, units='in', res=500, bg='white')
+#dev.off(): 그림 그리기 작업이 끝난 후 저장 디바이스를 닫음
+dev.off()
+
+pdf(file = 'mpg_engine_size.pdf', width=6, height=6, bg="white", paper='special')
+dev.off()
 
