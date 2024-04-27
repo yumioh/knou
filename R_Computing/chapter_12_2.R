@@ -78,7 +78,11 @@ ggplot(Cars93, aes(x=Horsepower, y=Price, shape=AirBags, color=AirBags)) +
   geom_point(size=3)+scale_shape_manual(values=c(16,17,18)) +
   scale_color_brewer(palette="Dark2") + geom_smooth(method=lm, se=FALSE)
 
-
+#회귀선을 연장하기 위해 옵션 fullrange=TRUE
+#fullrange = TRUE는 그래프 전체 범위에 걸쳐 회귀선을 그리도록 지정
+ggplot(Cars93, aes(x=Horsepower, y=Price, shape=AirBags, color=AirBags)) +
+  geom_point(size=3)+scale_shape_manual(values=c(16,17,18)) +
+  scale_color_brewer(palette="Dark2") + geom_smooth(method=lm, se=FALSE, fullrange=TRUE)
 
 
 
