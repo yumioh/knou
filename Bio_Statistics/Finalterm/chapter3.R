@@ -42,7 +42,7 @@ binom.test(sum(data1$sex==1), nrow(data1))
 # 대립가설 방향  alternative = "two.sided"(양측)  alternative = "greater" (u>u0)  alternative = "less" (u < u0)
 t.test(data1$weight, mu=68, alternative = "greater")
 
-#3.2 모비율 가설검정 : 모집단의 어떤 비율 p을 특정값 p0와 비굑하는 가설검정
+#3.2 모비율 가설검정 : 모집단의 어떤 비율 p을 특정값 p0와 비교하는 가설검정
 # prop.test(성공횟수, 시행횟수, 검정비율)
 prop.test(sum(data1$sex==1), nrow(data1), p=0.6)
 #Exact 방법으로 검정 : 

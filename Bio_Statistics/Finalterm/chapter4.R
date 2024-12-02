@@ -77,5 +77,4 @@ t.test(log(data$post.CEA),log(data$CEA), paired=TRUE)
 wilcox.test(log(data$post.CEA),log(data$CEA), paired=TRUE)
 
 #윌콕슨 부호순위 검정 : 비모수적 방법으로 데이터가 정규성을 따르지 않아도 사용할 수 있다
-# 대응표본 t-검정 : 데이터가 정규성을 만족한다고 가정하면, 평균의 차이를 검정 가능
-
+#대응표본 t-검정 : 데이터가 정규성을 만족한다고 가정하면, 평균의 차이를 검정 가능
