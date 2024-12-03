@@ -9,7 +9,7 @@
 #default 경로 설정
 setwd("C:/workplace/knou/Bio_Statistics/Finalterm")
 getwd()
-    data0 <- read.csv("./data/biostat_ex_data.csv")
+data0 <- read.csv("./data/biostat_ex_data.csv")
 library(dplyr)
 
 # 140이상이면 1, 140미만이면 0 저장하여 HTN라는 이분형 변수로 저장
