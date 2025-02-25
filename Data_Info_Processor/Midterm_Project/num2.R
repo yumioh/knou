@@ -1,5 +1,6 @@
 #scan함수로 txt파일 읽기
 score <- scan("D:\\knou\\Data_Info_Processor\\Midterm_Project\\score.txt")
+
 score
 
 #(1) 평균, 중앙값, 표본분산, 표본표준편차, 사분위수범위, 변동계수를 구하시오 
