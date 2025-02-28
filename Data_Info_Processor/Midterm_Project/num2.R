@@ -17,6 +17,8 @@ sd(score)
 #사분위수범위 : 3사분위(57) - 1사분위(33) : 24
 iqr <-IQR(score)
 iqr
+
+
 #변동계수 : 표준편차 / 평균 : 0.4237972
 cofficient <- sd(score)/mean(score)
 cofficient
