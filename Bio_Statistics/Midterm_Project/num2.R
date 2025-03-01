@@ -48,7 +48,7 @@ t.test(bio_data2$SBP)
 #(3)
 # 일표본 TEST : 표본의 평균이 모집단의 평균과 같은지 검정
 # 대응표본 TEST : 대응하는 두 표본의 평균 차이가 특정값과 같은지 비교(BEFRO-AFTER)
-# 이표본 TEST : 두 표본의 평균이 같은지 검정 (두 데이터 세트를 갖고 비교)
+# 이표본 TEST : 표본의 평균이 같은지 검정 (두 데이터 세트를 갖고 비교)
 
 t.test(SBP~smoking, data=bio_data2)
 

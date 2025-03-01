@@ -7,6 +7,8 @@ summary(bio_data)
 
 #데이터 전처리를 담당하는 패키지
 library(dplyr) 
+library(ggplot2)
+library(tidyr)
 #범주형 변수를 factor 형태로 저장하기 
 bio_data2 <- bio_data %>% mutate_at(vars(sex, Recur, stage, smoking, obesity, 
                                          Recur_1y, post.CA19.9.binary,
@@ -28,13 +30,17 @@ median(bio_data2$SBP)
 # 데이터 준비 및 통계치 계산
 stats <- bio_data2 %>%
   summarise(
-    Min = min(SBP), #최소값 
-    Q1 = quantile(SBP, 0.25), #제1사분위수
-    Median = median(SBP), #중앙값
-    Q3 = quantile(SBP, 0.75), #제3사분위수
-    Max = max(SBP) #최대값
+    Min = min(SBP),  # 최소값
+    Q1 = quantile(SBP, 0.25),  # 제1사분위수
+    Median = median(SBP),  # 중앙값
+    Q3 = quantile(SBP, 0.75),  # 제3사분위수
+    Max = max(SBP)  # 최대값
   ) %>%
-  gather(Key, Value) 
+  pivot_longer(
+    cols = everything(),
+    names_to = "Key",
+    values_to = "Value"
+  )
 
 # ggplot을 사용하여 박스플롯 생성 및 통계치 표기
 p <- ggplot(bio_data2, aes(x = factor(1), y = SBP)) +
