@@ -27,7 +27,7 @@ hep_data = heptathlon[,-8]
 #hep_data : PCA를 수행할 데이터 (8번째 열을 제거한 육상 선수 데이터)
 #cor=T : 상관행렬을 사용하여 PCA를 수행
 #기본적으로 princomp()는 공분산 행렬을 사용하지만, 각 변수가 다른 단위를 가지는 경우 cor=T로 설정하면 표준화된 값(Z-score)을 기반으로 분석하게 됩니다.
-#scores=T : 주성분 점수의 계산 여부 T면 계산
+#scores=T : 각 데이터의 주성분 점수를 저장 
 
 hep_pca = princomp(hep_data, cor=T, scores=T)
 #생성한 PCA 결과 객체의 구성 요소
@@ -75,4 +75,36 @@ hep_pca$scores[, c(1:2)]
 # 가까운 거리와 방향일수록 변수들의 상관성이 높다 
 biplot(hep_pca, cex=0.7, col=c("Red","Blue"))
 title("Biplot")
+
+
+# 주성분분석2
+beer = read.csv("D:/knou/Multivariate/data/beer.csv")
+summary(beer)
+
+# 상관계수행렬 및 산점도 행렬 보기 
+# 가격, 크기, 알코올함량이 상관계수가 높음 
+# 평판은 다른 변수들과 상관계수가 비교적 높은 않으며, 다른 변수들과 모두 음의 상관계수를 나타냈다
+round(cor(beer),2)
+
+# 산점도 행렬
+# color vs. aroma: 비교적 점들이 선형적으로 증가하는 경향이 있어 보이며, 양의 상관관계를 가질 가능성이 있음
+# aroma vs. taste: 비슷한 경향을 보이며, aroma가 높을수록 taste도 높아지는 양의 상관관계가 존재할 가능성이 있음
+plot(beer, pch=19)
+
+# 주성분분석 실행
+# cor = F는 공분산 이용, score=F : 각 케이스의 주성분 성분을 포함하라는 의미
+beer_pca = princomp(beer, cor=F, scores=F)
+beer_pca
+
+# 결과 요약
+# 첫번째 주성분이 47% 두번째 37% 설명력을 가짐
+summary(beer_pca)
+
+# 스크리 그림 및 주성분 계수
+screeplot(beer_pca, type="lines", pch=19)
+# 스크리 그림에서 주성분을 3개로 판단하여 1:3까지 계수 확인
+beer_pca$loadings[,c(1:3)]
+
+
+
 
