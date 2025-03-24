@@ -30,6 +30,7 @@ hep_data = heptathlon[,-8]
 #scores=T : 각 데이터의 주성분 점수를 저장 
 
 hep_pca = princomp(hep_data, cor=T, scores=T)
+hep_pca
 #생성한 PCA 결과 객체의 구성 요소
 names(hep_pca)
 #"sdev" (Standard Deviations, 주성분들의 표준 편차

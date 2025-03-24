@@ -22,10 +22,13 @@ heptathlon.run800m = np.max(heptathlon.run800m) - heptathlon.run800m
 feature = ['hurdles', 'highjump', 'shot', 'run200m', 'longjump', 'javelin', 'run800m']
 hep_data = heptathlon[feature]
 
+# print(hep_data)
+
 
 # 파이썬에서 PCA 분석을 하기 전에 데이터를 표준화(Z-score 정규화)
 # StandardScaler()는 각 열(변수)을 평균 0, 표준 편차 1로 변환하는 역할
 x = StandardScaler().fit_transform(hep_data)
+
 
 # 주성분분석
 # PCA : 사이킷런(Scikit-learn)에서 제공하는 주성분 분석(PCA) 함수
@@ -41,33 +44,35 @@ plt.title("scree plot")
 plt.xlabel("component")
 plt.ylabel("explained variance")
 plt.plot(pca_init.explained_variance_, '-o') 
-plt.show()
+#plt.show()
+
+# print(pca_init.explained_variance_)
 
 # 파이썬 주성분분석
 
 # 주성분의 수를 2개로 하여 주성분 실행
 pca = PCA(n_components=2)
 # pca 속성 확인
-print(dir(pca))
+#print(dir(pca))
 # fit_transform : 원래 데이터를 PCA를 이용해 새로운 좌표(주성분 점수)로 변환하는 과정
 hep_pca = pca.fit_transform(x)
-
+#print(hep_pca)
 
 #주성분분석
 # 데이터의 변동성을 나타냄 => 값이 높을수록 설명력이 높음
 # [4.64611996 1.24408391]
-print(pca.explained_variance_)
+#print(pca.explained_variance_)
 
 # 주성분분산 비율 
 # 데이터의 변동성에서 차지하는 비율 
 # [0.63718217 0.17061722] => PC1, PC2가 데이터의 약 80%를 설명
-print(pca.explained_variance_ratio_)
+#print(pca.explained_variance_ratio_)
 
 # 주성분계수
 # 각 원래 변수가 PC1, PC2를 구성하는 정도(가중치)
 # PC1 : Longjump (-0.4562), hurdles (-0.4529), run200m (-0.4079)가 PC1에 크게 기여 => 주로 점프 달리기 
 # PC2 : javelin (0.8417)이 매우 큰 값 → PC2는 창던지기(javelin) 특성을 주로 반영
-print(np.round(pca.components_),3)
+# print(np.round(pca.components_,3))
 
 
 # 주성분 점수
@@ -78,3 +83,5 @@ print(np.round(pca.components_),3)
 print(hep_pca[0:5,])
 
 # PCA의 고유벡터는 임의적으로 결정될 수 있음. 부호는 영향을 미치지 않고 계수의 크기와 상대적 패턴이 중요
+
+
