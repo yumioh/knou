@@ -1,3 +1,5 @@
+install.packages("psych")
+library(psych)
 # R을 이용한 인자분석
 med_data = read.csv("D:/knou/Multivariate/data/medFactor.csv")
 head(med_data)
@@ -21,5 +23,31 @@ plot(med_factor$values, type="b", pch=19)
 # h2 : 변수의 공통성
 # u2 : 고유분산
 # 유의한 인자 : RC1, RC2, RC3
+# varimax : 행렬의 열을 기준으하여 큰 값은 더 크게, 작은 값은 더 작게 회전하는 방법 
 med_varimax = principal(med_data, nfactors = 3, rotate = "varimax", scores = T, method = "regression")
 med_varimax
+
+
+#인자점수
+head(med_varimax$scores)
+
+#인자점수 계산
+# oblimin : 인자값을 0 또는 1에 가깝도록 회전하는 방법
+# method="regression" : 주성분 분석시 회귀 분석 사용
+# scores = TRUE : 각 행별 인자점수를 계산
+med_oblimin = principal(med_data, nfactors = 3, rotate = "oblimin", scores = T, method="regression")
+med_oblimin
+
+head(med_oblimin$scores)
+
+#행렬도 그리기
+biplot(med_varimax)
+
+state = state.x77
+summary(state)
+
+#인자 분석 하기 
+library(stats)
+
+#인자부하값을 이용하여 고윳값을 구함함
+factanal(state, factors=4)
