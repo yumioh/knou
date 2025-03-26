@@ -50,4 +50,28 @@ summary(state)
 library(stats)
 
 #인자부하값을 이용하여 고윳값을 구함함
-factanal(state, factors=4)
+state_fact0 = factanal(state, factors=4)
+#벡터의 제곱합을 구하는 함수  
+sosq = function(v) {sum(v^2)}
+#요인 부하량 행렬 추출(행: 변수, 열: 요인)
+loadings = as.matrix(state_fact0$loadings)
+#각 요인별 고유값 계산 = 해당 열의 제곱합
+# 1: 행 2: 열
+eigne_value = apply(loadings, 2, sosq)
+# 해당값이 클수록 해당 요인이 데이터를 더 많이 설명
+eigne_value
+
+#인자분석 실행
+state_fact = factanal(state, factors=3, rotation="none") #회전 none
+state_fact
+state_fact1 = factanal(state, factors=3, rotation="varimax") #varimax 회전 
+state_fact1
+state_fact2 = factanal(state, factors=3, rotation="promax") #promax 회전 
+state_fact2
+
+# 공통성이 낮은 population 제외
+state_fact1 = factanal(state[,-1], factors=3, rotation="varimax")
+state_fact1
+
+
+

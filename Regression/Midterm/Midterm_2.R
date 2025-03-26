@@ -28,30 +28,39 @@ summary(cyl_lm)
 summary(disp_lm)
 summary(hp_lm)
 
-# 2) 연비 예측에 추가적으로 도움이 되는 변수를 하나 더 추가하여 중회귀모형을 적합하고자 힘
-#    가장 도움이 되는 추가 변수를 선정하고 근거를 제시하시오 
+# 2번문제 참고 코드
+model_multi <- lm(mpg ~ wt + disp + cyl + hp + vs + qsec, data = mtcars)
+model_multi
+
 
 install.packages("fmsb")
 library(fmsb)
 
-cor(mtcars$wt, mtcars$cyl)   # 강한 상관관계
-cor(mtcars$wt, mtcars$hp)    # 선형 관계
-cor(mtcars$wt, mtcars$drat)  # 음의 선형 관계 
-cor(mtcars$wt, mtcars$qsec)  # 매우 낮은 상관관계
+# 2) 연비 예측에 추가적으로 도움이 되는 변수를 하나 더 추가하여 중회귀모형을 적합하고자 함
+#    가장 도움이 되는 추가 변수를 선정하고 근거를 제시하시오 
+# 종속변수(mpg)와의 상관관계가 높되, 기존 설명병수(wt)와는 상관관계가 낮아야 하는 변수를 찾아야함
 
-#
-model_multi <- lm(mpg ~ wt + qsec + hp + disp, data = mtcars)
 
-# VIF 계산
-hp = VIF(lm(mpg ~ wt + hp, data = mtcars))
-disp = VIF(lm(mpg ~ wt + disp, data = mtcars))
-qsec = VIF(lm(mpg ~ wt + qsec, data = mtcars))
+# 변수 간 상관계수 확인
+cor(mtcars$wt, mtcars$disp) # 강한 상관 관계
+cor(mtcars$wt, mtcars$cyl)  # 강한 상관 관계
+cor(mtcars$wt, mtcars$hp)   # 중간 상관 관계 
+cor(mtcars$wt, mtcars$vs)   # 중간 음의 상관관계 
+cor(mtcars$wt, mtcars$qsec) # 매우 낮은 상관관계 => 독립적
 
-# qsec가 가장 낮은 상관관계를 갖고 있어서 
+# VIF(분산팽창지수) 해당하는 값이 높다면 강하게 상관관계가 있음 
+VIF(lm(mpg ~ wt + disp, data = mtcars))
+VIF(lm(mpg ~ wt + cyl, data = mtcars))
+VIF(lm(mpg ~ wt + hp, data = mtcars))
+VIF(lm(mpg ~ wt + vs, data = mtcars))
+VIF(lm(mpg ~ wt + qsec, data = mtcars))
+
 # 전체 회귀식 p-value는 이 회귀모형은 무의미하다. → 즉, 모든 설명변수의 계수가 0이다.
 # 각 변수의 p-value는 해당 변수가 '종속변수(mpg)'에 선형적으로 영향을 주는가를 검정
 qsec_multi <- lm(mpg ~ wt + qsec, data = mtcars)
 disp_multi <- lm(mpg ~ wt + disp, data = mtcars)
+vs_multi <- lm(mpg ~ wt + vs, data = mtcars)
 summary(qsec_multi)
 summary(disp_multi)
+summary(vs_multi)
 
