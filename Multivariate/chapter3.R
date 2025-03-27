@@ -70,8 +70,47 @@ state_fact2 = factanal(state, factors=3, rotation="promax") #promax 회전
 state_fact2
 
 # 공통성이 낮은 population 제외
-state_fact1 = factanal(state[,-1], factors=3, rotation="varimax")
-state_fact1
+state_fact1_1 = factanal(state[,-1], factors=3, rotation="varimax",scores = "Bartlett")
+state_fact1_1
 
 
+# 인자점수 : 0을 기준으로 평균적이 위치를 나타냄 값이 클수록 요인의 특성이 강하게 나타남 
+# 인자 점수를 계산하려면 regression, Bartlett 선택 : scores = "Bartlett"
+state_fact1_1 = factanal(state[,-1], factors=3, rotation="varimax",scores = "Bartlett")
+head(state_fact1_1$scores)
 
+# 인자패턴
+# loadings: 요인부하량
+nsmev = colnames(state)
+fa = state_fact1_1
+plot(fa$loadings[,1], fa$loadings[,2], xlab="factor1", ylab = "factor2", pch=19)
+text(x=fa$loadings[,1], y=fa$loadings[,2], labels = nsmev, cex=0.8)
+abline(h=0, v=0, lty=2)
+
+nsmev = colnames(state)
+fa = state_fact1_1
+plot(fa$loadings[,1], fa$loadings[,3], xlab="factor1", ylab = "factor3", pch=19)
+text(x=fa$loadings[,1], y=fa$loadings[,3], labels = nsmev, cex=0.8)
+abline(h=0, v=0, lty=2)
+
+
+# minres를 이용한 인자 분석
+fem = read.csv("D:/knou/Multivariate/data/grntFem.csv")
+head(fem)
+
+summary(fem)
+
+library(psych)
+uls = fa(fem, 2, rotate="none", fm="minres")
+names(uls)
+
+#고유값 및 스크림 그림
+uls$values
+plot(uls$values, type="b", pch=19) # 유효인자 2개 
+
+# 인자점수
+head(uls$scores)
+
+
+# 행렬도
+biplot(uls, cex=0.7)
