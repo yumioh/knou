@@ -43,8 +43,20 @@ deug = princomp(deug_tab, cor = TRUE, score = TRUE)
 screeplot(deug, type = "lines", pch = 19, main = "Scree Plot of Exam Data")
 
 # 5) 위 결과를 이용하여 주성분을 구하라
+#해당하는 결과로 주성분은 3개로 판단함
 deug = princomp(deug_tab, cor = TRUE, score = TRUE)
+deug
+
+# 기여도
+loadings(deug)[, 1:3]
+
+#	설명력 및 누적 설명력
 summary(deug)
+
+# 주성분 점수 (PC1, PC2, PC3)
+pc_scores <- deug$scores[, 1:3]
+head(pc_scores)
+
 
 # 6) bioplot을 그려보고 주성분 특징을 정리하라
 biplot(deug, cex=0.5, pch=16, main = "Biplot")
