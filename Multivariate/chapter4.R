@@ -4,7 +4,7 @@ beer = read.csv("d:/knou/Multivariate/data/beerbrand.csv", header=T, row.names=1
 head(beer)
 summary(beer)
 
-# 데이터 표준화
+# 데이터 표준화 
 zbeer = scale(beer)
 apply(zbeer, 2, mean)
 
@@ -55,5 +55,40 @@ kmc = kmeans(zbeer, centers=2)
 kmc
 
 # 소속 군집 산점도 
+# 번호1 : 검정, 번호2 : 빨강
 plot(zbeer, col=kmc$cluster, pch=16)
 
+# k-평균 군집 데이터의 모든 변수를 그리기
+pairs(zbeer, col=kmc$cluster, pch=16, cex.labels = 1.5)
+
+# 데이터 읽기 및 표준화 
+head(USArrests)
+
+summary(USArrests)
+
+#표준화
+zUSArrests = scale(USArrests)
+
+# 계측정 군집 분석 진행
+# 유클리드 거리로 계산, 50개의 객체가 군집 분석 대상
+# 평균 영결법 사용
+hc_a = hclust(dist(zUSArrests), method="average")
+hc_a
+
+# 덴드로그램 그리기
+plot(hc_a, hang=-1)
+
+# 소속 군집 알기 
+hcmember = cutree(hc_a, k=5)
+
+# 각 군집별 중심점 찾기: 각 군집별로 입력변수들의 중심점 계산
+data_combined = cbind(zUSArrests, hcmember)
+
+# hcmember 열의 소속 군집이 같은 주끼리 입력변수들의 평균을 계산
+aggregate(.~hcmember, data_combined, mean)
+
+# k평균 군집 분석 
+kmc1 = kmeans(zUSArrests, 4)
+
+# 소속 군집 산점도
+pairs(USArrests, col=kmc1$cluster, pch=16, cex.labels = 1.5)
