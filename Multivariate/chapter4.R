@@ -92,3 +92,4 @@ kmc1 = kmeans(zUSArrests, 4)
 
 # 소속 군집 산점도
 pairs(USArrests, col=kmc1$cluster, pch=16, cex.labels = 1.5)
+
