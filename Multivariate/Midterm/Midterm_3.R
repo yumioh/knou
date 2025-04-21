@@ -61,4 +61,3 @@ head(pc_scores)
 # 6) bioplot을 그려보고 주성분 특징을 정리하라
 biplot(deug, cex=0.5, pch=16, main = "Biplot")
 
-
