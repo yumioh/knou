@@ -8,6 +8,7 @@
 # 모든 입력변수를 포함한 선형회귀모형을 훈련 데이터로 적합 후, 단계적 변수선택법에 의해 유의한 입력변수만 선택한 최적의 모형 선택
 # 예측값을 계산하고 실제값과의 차이를 제곱평균한 평균제곱차로 값 산출 
 
+# 의류생산성 데이터 : quarter, department, day, team 범주형 
 prod = read.csv("D:/knou/DataMining/data/productivityREG.csv")
 head(prod)
 
@@ -21,20 +22,19 @@ train.index = sample(1:nrow(prod), size = 0.7*nrow(prod), replace=F) # 1:nrow(pr
 prod.train = prod[train.index,]
 prod.test = prod[-train.index,] # -train.index: 해당 인덱스를 제외한 나머지 선택
 
-# 의류 생산성 데이터에 회귀 모형 적합 및 예측결과
+# 1. 의류 생산성 데이터에 회귀 모형 적합 및 예측결과
 fit.reg = lm(productivity~., data = prod.train) # productivity: 종속변수, 나머지 설명변수
 fit.step.reg = step(fit.reg, direction = "both", trace=FALSE) 
 #step : 변수 자동선택, direction = "both" : 전진 선택 + 후진 제거, trace = FALSE는 중간 과정 출력을 생략
-
 pred.reg = predict(fit.step.reg, newdata = prod.test, type="response")
 mean((prod.test$productivity - pred.reg)^2)  # MSE
 mean(abs(prod.test$productivity - pred.reg)) # MAE
 
 library(rpart)
 
-# 훈련데이터를 이용해 회귀 트리 모델을 만들고, 교차검증으로 가지치를 수행해 최적 모델을 얻는 과정
+# 2. 회귀 트리 모델
 
-# rpart : 
+# 결정 트리 모델을 만들기 전에 트리 방식고 가지치기 조건을 조절하기 위함
 # xval = 10 : 10겹 교차검증 훈련데이터를 10조각으로 나눔 그중 9개를 학습 1개를 검증용 => 이과정을 10번 반복해서 모든 조각을 한번씩 검증에 사용
 # cp = 0 복잡도 가지치가 없이 트리를 최대한 분할 => 가지치기 없이 트리를 가능한 많이 분할
 # minsplit : 노드 분할하기 위해 최소 5개 이상의 관측치가 있어야함 => 5개 이상일때만 분할허용
@@ -62,11 +62,12 @@ pred.tree = predict(fit.prun.tree, newdata=prod.test, type="vector")
 mean((prod.test$productivity - pred.tree)^2)  # MSE
 mean(abs(prod.test$productivity - pred.tree)) # MAE
 
+
+#3. 신경망 
 install.packages("neuralnet")
 library(neuralnet)
 library(dummy)
 
-# 
 dvar = c(1:4)
 prod2 = dummy(x=prod[,dvar]) # 1~4열에 대해 더미 변수로 변환
 prod2 = prod2[, c(5,7,13,25)] # 일부 열만 선택
@@ -75,7 +76,6 @@ prod2 = cbind(prod[,-dvar], prod2) # 선택한 열을 제외하고 새로운 데
 # 숫자형태가 아닌걸 numberic로 변환
 for(i in 1: ncol(prod2)) if(!is.numeric(prod2[,i]))
   prod2[,i] = as.numeric(prod2[,i])
-
 
 set.seed(1234)
 train.index = sample(1:nrow(prod2), round(0.7*nrow(prod2)))
@@ -92,14 +92,13 @@ sdat.train = as.data.frame(sdat.train)
 sdat.test = scale(prod2.test, center = min1, scale = max1 - min1)
 sdat.test = as.data.frame(sdat.test)
 
-
 vname = names(sdat.train) # 모든 변수 이름을 저장
 
 # as.formula : 회귀수식 종석변수 ~ 독립변수1 + 독립변수2 ....
 # paste : 문자열 연결 함수, as.formula : 문자열로 자동 생성 후, 공식적인 formula 객체로 바꿔주는 함수
 f = as.formula(paste("productivity ~", paste(vname[!vname %in% "productivity"], collapse = " + ")))
 
-# 신경망 모델 학습 
+# 3. 신경망 모델 학습 
 # data : 훈련데이터
 # hidden : 은닉층
 # linear.output=T : 출력값을 연속형
@@ -114,6 +113,8 @@ pred.nn = pred.nn*(max1[7]-min1[7])+min1[7]
 mean((prod.test$productivity - pred.nn)^2)  # MSE 
 mean(abs(prod.test$productivity - pred.nn)) # MAE 
 
+
+# 4. 랜덤포레스트로 학습하기 
 library(randomForest)
 
 class(c)
@@ -132,18 +133,17 @@ pred.rf = predict(fit.rf, newdata = prod.test , type="response")
 mean((prod.test$productivity - pred.rf)^2)  # MSE
 mean(abs(prod.test$productivity - pred.rf)) # MAE
 
-#  mse성능비교
+# mse성능비교: MSE가 작을수록 성능이 좋음 => 랜덤포레스트
 mean((prod.test$productivity - pred.reg)^2)  # 선형회귀
 mean((prod.test$productivity - pred.tree)^2) # 결정트리
 mean((prod.test$productivity - pred.nn)^2)   # 신경망
 mean((prod.test$productivity - pred.rf)^2)   # 랜덤포레스트
 
-### Summary: MAEs
-
-mean(abs(prod.test$productivity - pred.reg))  # Regression
-mean(abs(prod.test$productivity - pred.tree)) # Decision Tree
-mean(abs(prod.test$productivity - pred.nn))   # Neural Network
-mean(abs(prod.test$productivity - pred.rf))   # Random Forest
+# MAE 성능비교 : MAEs가 작을수록 성능이 좋음 => 랜덤 포레스트
+mean(abs(prod.test$productivity - pred.reg)) 
+mean(abs(prod.test$productivity - pred.tree))
+mean(abs(prod.test$productivity - pred.nn))   
+mean(abs(prod.test$productivity - pred.rf)) 
 
 # 그래프 그리기
 par(mfrow=c(2,2), pty="s")
@@ -169,6 +169,14 @@ install.packages("devtools")
 devtools::install_version("parallelly", version = "1.44.0", type = "source")
 devtools::install_version("future", version = "1.49.0")
 
+
+### 와인데이터 ##########
+install.packages("sparsevctrs")
+install.packages("lava")
+
+install.packages("recipes", type = "binary")
+install.packages("hardhat", type = "binary")
+
 install.packages("caret")
 library(caret)
 
@@ -181,7 +189,7 @@ train.index = createDataPartition(wine$quality, p=0.7, list=FALSE)
 wine.train = wine[train.index,]
 wine.test = wine[-train.index,]
 
-## 로지스틱회귀
+## 1. 로지스틱회귀
 
 # 1. 모델 학습 : 
 # 로직스틱회귀(glm)
@@ -216,7 +224,7 @@ tab[2,2]/sum(tab[2,])   # 민감도 142/190
 tab[1,1]/sum(tab[1,])   # 특이도 120/168
 
 
-## 결정 트리 
+## 2. 결정 트리 
 
 library(rpart)
 
@@ -256,7 +264,7 @@ sum(diag(tab))/sum(tab) # accuracy
 tab[2,2]/sum(tab[2,])   # sensitivity
 tab[1,1]/sum(tab[1,])   # specificity
 
-## 신경망 모형
+## 3. 신경망 모형
 
 install.packages("neuralnet")
 library(neuralnet)
@@ -299,7 +307,7 @@ sum(diag(tab))/sum(tab) # 정확도
 tab[2,2]/sum(tab[2,])   # 민감도
 tab[1,1]/sum(tab[1,])   # 특이도
 
-##와인품질데이터에 배깅모형 적함 및 예측결과
+##3.배깅모형 적함 및 예측결과
 library(rpart)
 library(adabag)
 
@@ -327,7 +335,7 @@ tab[2,2]/sum(tab[2,])   # sensitivity
 tab[1,1]/sum(tab[1,])   # specificity
 
 
-## 와인품질 데이터에 부스팅모형 적합 및 예측 결과
+## 4. 부스팅모형
 library(rpart)
 library(adabag)
 
@@ -352,7 +360,7 @@ sum(diag(tab))/sum(tab) # accuracy
 tab[2,2]/sum(tab[2,])   # sensitivity
 tab[1,1]/sum(tab[1,])   # specificity
 
-## 랜덤포레스트
+## 5.랜덤포레스트
 
 library(randomForest)
 
@@ -396,7 +404,7 @@ pred.rf   = prediction(p.test.rf, wine.test$quality)
 perf.rf = performance(pred.rf,"tpr","fpr")
 
 
-# Drawing ROCs
+# Drawing ROCs : 값이 높을 수록 좋은 성능
 plot(perf.reg,  lty=1, col=1, xlim=c(0,1), ylim=c(0,1),xlab="1-Specificity", ylab="Sensitivity", main="ROC Curve")
 plot(perf.tree, lty=2, col=2, add=TRUE)
 plot(perf.nn,   lty=3, col=3, add=TRUE)
@@ -407,13 +415,15 @@ plot(perf.rf,   lty=6, col=6, add=TRUE)
 lines(x = c(0, 1), y = c(0, 1), col = "grey")
 legend(0.6,0.3, c("Regression","Decision Tree","Neural Network","Bagging","Boosting","Random Forest"), lty=1:6, col=1:6)
 
-# Computing AUCs
+# Computing AUCs : 값이 높을 수록 좋은 성능
 performance(pred.reg, "auc")@y.values #Regression
 performance(pred.tree,"auc")@y.values #Decision Tree
 performance(pred.nn,  "auc")@y.values #Neural Network
 performance(pred.bag, "auc")@y.values #Bagging
 performance(pred.boo, "auc")@y.values #Boosting
 performance(pred.rf,  "auc")@y.values #Random Forest
+# 민감도는 배깅모형이 크고 특이도는 랜덤포레스트 모형이 가장 크다 => 예측정확도는 랜덤포레스트모형이 가장 크다
+
 
 
 
