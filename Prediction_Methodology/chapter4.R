@@ -21,3 +21,15 @@ acf(arimal_sim, main= "", col="steelblue")
 # 부분자기상관계쑤 : 다른 시점의 영향을 제거한 순수한 상관관계
 #  어떤 차수까지 유의미한지 파악 모델의 p값을 결정할때 사용 
 pacf(arimal_sim, main= "", col="steelblue")
+
+
+## graph 모형 시계열을 생성하고, 상관도표와 부분상관도표를 그리는 프로그램
+
+install.packages("fGarch")
+library(fGarch)
+
+set.seed(5)
+spec = garchSpec(model = list(alpha=c(0.5, 0.4), beta=0))
+garchsim = garchSim(spec, n=200)
+garchsim %>% ggtsdisplay(main="", theme_bw())
+garchsim^2 %>% ggtsdisplay(main="", theme_bw())
