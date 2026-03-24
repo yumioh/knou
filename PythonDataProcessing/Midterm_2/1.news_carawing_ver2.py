@@ -7,13 +7,13 @@ import re
 문제1-1] 웹스크래핑을 통한 데이터 수집
  - 서로 다른 두 개의 키워드와 기간을 설정하여 다음 뉴스에서 기사 제목, 날짜, 언론사명, 요약문(있는 경우)을 수집
  - 수집항목 : 기사 제목, 언론사명, 요약문(있는 경우)
+ - 수집범위 : 3월1일 ~ 3월 15일까지 10페이지씩 수집
  - 결과파일 : data/newsscraping.csv로 저장
 '''
 
 headers = {
     'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 }
-
 
 sd_str = "20260301000000"
 ed_str = "20260301235959"
