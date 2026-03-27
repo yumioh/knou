@@ -6,3 +6,4 @@
 *.pdf
 *.Rhistory
 *.RData
+.env

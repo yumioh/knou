@@ -28,6 +28,8 @@ toDate = "2026-03-01"
 fromDate = "2026-03-01"
 keyword = "중앙화"
 
+## 블루요션 vs 레드오션
+
 news_data = []
 for date in pd.date_range(toDate, fromDate) :
     sd_str = date.strftime("%Y%m%d") + "000000"
