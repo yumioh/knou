@@ -4,19 +4,24 @@ import pandas as pd
 import requests
 import datetime as dt
 
-load_dotenv()
+'''
+문제2-1]  API를 활용하여 데이터 추출
+수집 항목 : 공공데이터포털에서 한국환경공단_에어코리아_대기오염통계 현황에서 측정소별 실시간 일평균 정보 
+수집 기간 : 2025-11-01 ~ 2026-02-28 (3개월치 데이터 제공)
+지역 : 광진구
+데이터 형태 : JSON
 
+'''
+
+load_dotenv()
 api_key = os.getenv('PUBLIC_API_KEY')
 
 ## 시군구별 실시간 평균정보 조회 
 ## 디코딩된 키값을 사용하여 API 호출
 url = 'http://apis.data.go.kr/B552584/ArpltnStatsSvc/getMsrstnAcctoRDyrg'
 
-
-# 모든 데이터를 담을 리스트
 all_items = []
-
-i = 1
+i = 1 # 2페이지라 페이징 처리
 
 while True:
     # PARAMS 설정
@@ -25,9 +30,9 @@ while True:
         'pageNo': i,
         'numOfRows': 100,
         'inqBginDt' : '20251101',
-        'inqEndDt': '20260229',
+        'inqEndDt': '20260228',
         'msrstnName' : '광진구',
-        'returnType': 'JSON'
+        'returnType': 'json'
     }
     
     try:
@@ -65,12 +70,5 @@ while True:
         break
 
 # 4. 수집된 모든 데이터를 하나의 DataFrame으로 합쳐서 저장
-if all_items:
-    df = pd.DataFrame(all_items)
-    # 폴더가 존재하는지 확인 후 저장 (없으면 에러 방지용)
-    save_path = './PythonDataProcessing/Midterm_2/data/'
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-        
-    df.to_csv(f'{save_path}weather_data_gwangjin.csv', index=False, encoding='utf-8-sig')
-    print("CSV 저장 완료!")
+df = pd.DataFrame(all_items)    
+df.to_csv(f'./PythonDataProcessing/Midterm_2/data/weather_data_gwangjin.csv', index=False, encoding='utf-8-sig')
