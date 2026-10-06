@@ -1,6 +1,15 @@
-// third_party/ (이미지 읽기/저장)
-// images/ (테스트 영상)
+// Hough 변환을 이용한 직선 검출 - 직접 구현
+//
+// 처리 순서: 그레이스케일 -> 에지 검출(이진화 / Sobel) -> 누적 배열 + 투표
+//            -> 직선 찾기(임계값 + 지역 최대) -> 직선 그리기
+//
+// 폴더 구성
+//   third_party/ : 이미지 파일 읽기/저장 라이브러리 (stb_image, stb_image_write)
+//   images/      : 입력 영상
+//   results/     : 결과 영상
+//
 // 빌드 명령어 : g++ -O2 -std=c++17 my_hough.cpp -o my_hough.exe
+// 실행       : my_hough.exe
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "third_party/stb_image.h"
@@ -10,6 +19,10 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+
+// ============================================================
+// 1. 입력 영상 준비
+// ============================================================
 
 // 테스트 영상 만들기: 검은 배경(0)에 흰 직선(255) 3개
 // 정답을 미리 알고 있는 영상으로 Hough 변환 결과를 검증하기 위함
@@ -26,14 +39,57 @@ std::vector<unsigned char> makeTestImage(int w, int h) {
     return img;
 }
 
+// 그레이스케일 변환: RGB 컬러 영상 -> 흑백 영상
+//   밝기 = 0.299*R + 0.587*G + 0.114*B (사람 눈이 초록에 가장 민감하므로 G 가중치가 가장 큼)
+std::vector<unsigned char> toGray(const unsigned char* rgb, int w, int h) {
+    std::vector<unsigned char> gray(w * h);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int i = y * w + x;                   // (x, y) 픽셀의 위치
+            unsigned char r = rgb[i * 3 + 0];
+            unsigned char g = rgb[i * 3 + 1];
+            unsigned char b = rgb[i * 3 + 2];
+            gray[i] = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
+        }
+    }
+    return gray;
+}
+
+// ============================================================
+// 2. 에지 검출
+// ============================================================
+
 // 이진화: 밝기가 임계값(th)보다 크면 255(에지), 아니면 0
 std::vector<unsigned char> threshold(const std::vector<unsigned char>& src, int th) {
     std::vector<unsigned char> dst(src.size());
     for (size_t i = 0; i < src.size(); i++) {
-        dst[i] = (src[i] > th) ? 255 : 0; 
+        dst[i] = (src[i] > th) ? 255 : 0;
     }
     return dst;
 }
+
+// Sobel 에지 검출: 밝기 변화(그래디언트)의 크기가 임계값(th)보다 크면 255(에지), 아니면 0
+//   Gx = [-1 0 1]      Gy = [-1 -2 -1]
+//        [-2 0 2]           [ 0  0  0]
+//        [-1 0 1]           [ 1  2  1]
+//   크기 = sqrt(Gx^2 + Gy^2)
+std::vector<unsigned char> sobel(const std::vector<unsigned char>& gray, int w, int h, int th) {
+    std::vector<unsigned char> edges(w * h, 0);
+    for (int y = 1; y < h - 1; y++) {          // 3x3 마스크가 영상 밖으로 나가지 않도록 테두리 1픽셀 제외
+        for (int x = 1; x < w - 1; x++) {
+            auto I = [&](int dx, int dy) { return (int)gray[(y + dy) * w + (x + dx)]; };
+            int gx = -I(-1, -1) - 2 * I(-1, 0) - I(-1, 1) + I(1, -1) + 2 * I(1, 0) + I(1, 1);
+            int gy = -I(-1, -1) - 2 * I(0, -1) - I(1, -1) + I(-1, 1) + 2 * I(0, 1) + I(1, 1);
+            double mag = std::sqrt((double)(gx * gx + gy * gy));
+            edges[y * w + x] = (mag > th) ? 255 : 0;
+        }
+    }
+    return edges;
+}
+
+// ============================================================
+// 3. Hough 변환: 누적 배열 + 투표
+// ============================================================
 
 // Hough 변환: 누적 배열 만들기 + 투표
 //   직선의 Hesse 표준형  rho = x*cos(theta) + y*sin(theta)
@@ -47,7 +103,7 @@ std::vector<int> houghTransform(const std::vector<unsigned char>& edges, int w, 
     D = (int)std::ceil(std::sqrt((double)(w * w + h * h)));
     nTheta = 180;
     nRho = 2 * D + 1;
-    std::vector<int> acc(nRho * nTheta, 0);  // 모든 칸ㄹ을 0으로 초기화
+    std::vector<int> acc(nRho * nTheta, 0);  // 모든 칸을 0으로 초기화
 
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
@@ -65,6 +121,13 @@ std::vector<int> houghTransform(const std::vector<unsigned char>& edges, int w, 
     return acc;
 }
 
+// 누적 배열의 최댓값
+int maxOf(const std::vector<int>& acc) {
+    int m = 0;
+    for (int v : acc) if (v > m) m = v;
+    return m;
+}
+
 // 누적 배열을 이미지로 저장
 //   가로축: theta (-90 ~ 89도), 세로축: rho (-D ~ +D)
 //   득표 수를 0~255 밝기로 변환: 많이 득표한 칸일수록 밝게
@@ -78,12 +141,16 @@ void saveAccumulator(const char* path, const std::vector<int>& acc, int nRho, in
     for (int r = 0; r < nRho; r++) {
         for (int x = 0; x < imgW; x++) {
             int t = x / sx;
-           img[r * imgW + x] = (unsigned char)(255.0 * std::sqrt((double)acc[r * nTheta + t] / maxVote));
-           //img[r * imgW + x] = (unsigned char)(255.0 * acc[r * nTheta + t] / maxVote);
+            img[r * imgW + x] = (unsigned char)(255.0 * std::sqrt((double)acc[r * nTheta + t] / maxVote));
+            //img[r * imgW + x] = (unsigned char)(255.0 * acc[r * nTheta + t] / maxVote);
         }
     }
     stbi_write_png(path, imgW, imgH, 1, img.data(), imgW);
 }
+
+// ============================================================
+// 4. 직선 찾기
+// ============================================================
 
 // 검출된 직선 하나
 struct Line {
@@ -129,6 +196,18 @@ std::vector<Line> findLines(const std::vector<int>& acc, int nRho, int nTheta, i
     }
     return lines;
 }
+
+// 검출된 직선 목록 출력
+void printLines(const std::vector<Line>& lines) {
+    for (size_t i = 0; i < lines.size(); i++) {
+        printf("  직선 %2zu: theta = %4d도, rho = %5d, 득표 = %d\n",
+               i + 1, lines[i].theta, lines[i].rho, lines[i].votes);
+    }
+}
+
+// ============================================================
+// 5. 직선 그리기
+// ============================================================
 
 // 흑백 영상 -> 컬러(RGB) 영상: 빨간 직선을 그리기 위해 R=G=B=밝기로 복사
 std::vector<unsigned char> grayToRgb(const std::vector<unsigned char>& gray) {
@@ -183,47 +262,26 @@ void drawLine(std::vector<unsigned char>& rgb, int w, int h, const Line& line, i
     drawSegment(rgb, w, h, x1, y1, x2, y2);
 }
 
-// Sobel 에지 검출: 밝기 변화(그래디언트)의 크기가 임계값(th)보다 크면 255(에지), 아니면 0
-//   Gx = [-1 0 1]      Gy = [-1 -2 -1]
-//        [-2 0 2]           [ 0  0  0]
-//        [-1 0 1]           [ 1  2  1]
-//   크기 = sqrt(Gx^2 + Gy^2)
-std::vector<unsigned char> sobel(const std::vector<unsigned char>& gray, int w, int h, int th) {
-    std::vector<unsigned char> edges(w * h, 0);
-    for (int y = 1; y < h - 1; y++) {          // 3x3 마스크가 영상 밖으로 나가지 않도록 테두리 1픽셀 제외
-        for (int x = 1; x < w - 1; x++) {
-            auto I = [&](int dx, int dy) { return (int)gray[(y + dy) * w + (x + dx)]; };
-            int gx = -I(-1, -1) - 2 * I(-1, 0) - I(-1, 1) + I(1, -1) + 2 * I(1, 0) + I(1, 1);
-            int gy = -I(-1, -1) - 2 * I(0, -1) - I(1, -1) + I(-1, 1) + 2 * I(0, 1) + I(1, 1);
-            double mag = std::sqrt((double)(gx * gx + gy * gy));
-            edges[y * w + x] = (mag > th) ? 255 : 0;
-        }
-    }
-    return edges;
-}
+// ============================================================
+// 실행 1: 테스트 영상으로 검증
+// ============================================================
+void runTest() {
+    printf("===== 테스트 영상 =====\n");
 
-// 누적 배열의 최댓값
-int maxOf(const std::vector<int>& acc) {
-    int m = 0;
-    for (int v : acc) if (v > m) m = v;
-    return m;
-}
-
-int main() {
-    // 0. 테스트 영상 만들기
-    int tw = 300, th = 300;
-    std::vector<unsigned char> test = makeTestImage(tw, th);
-    stbi_write_png("results/test_lines.png", tw, th, 1, test.data(), tw);
+    // 1. 테스트 영상 만들기 (처음부터 흑백이므로 그레이스케일 변환 불필요)
+    int w = 300, h = 300;
+    std::vector<unsigned char> test = makeTestImage(w, h);
+    stbi_write_png("results/test_lines.png", w, h, 1, test.data(), w);
     printf("저장 완료: results/test_lines.png\n");
 
-    // 0-1. 테스트 영상 이진화
-    std::vector<unsigned char> testBin = threshold(test, 100);
-    stbi_write_png("results/test_binary.png", tw, th, 1, testBin.data(), tw);
+    // 2. 에지 검출: 이진화 (강의 예제와 같은 방식)
+    std::vector<unsigned char> edges = threshold(test, 100);
+    stbi_write_png("results/test_binary.png", w, h, 1, edges.data(), w);
     printf("저장 완료: results/test_binary.png\n");
 
-    // 0-2. Hough 변환 (누적 배열 + 투표)
+    // 3. Hough 변환 (누적 배열 + 투표)
     int D, nRho, nTheta;
-    std::vector<int> acc = houghTransform(testBin, tw, th, D, nRho, nTheta);
+    std::vector<int> acc = houghTransform(edges, w, h, D, nRho, nTheta);
     printf("누적 배열 크기: %d(rho) x %d(theta), D = %d\n", nRho, nTheta, D);
 
     // 확인: 최대 득표 칸 찾기
@@ -239,11 +297,10 @@ int main() {
     }
     printf("최대 득표: %d표, theta = %d도, rho = %d\n", maxVote, maxT - 90, maxR - D);
 
-    // 0-3. 누적 배열 이미지 저장
     saveAccumulator("results/test_accumulator1.png", acc, nRho, nTheta, maxVote);
     printf("저장 완료: results/test_accumulator1.png\n");
 
-    // 0-4. 직선 찾기
+    // 4. 직선 찾기
     int voteTh = 100;  // 득표 임계값
 
     // (1) 임계값만 적용 -> 피크 주변 칸까지 중복 검출됨
@@ -253,74 +310,64 @@ int main() {
     // (2) 임계값 + 지역 최대 검사 -> 직선마다 하나씩만 검출
     std::vector<Line> lines = findLines(acc, nRho, nTheta, D, voteTh, 5);
     printf("[지역 최대 검사 추가] 검출된 직선: %zu개\n", lines.size());
-    for (size_t i = 0; i < lines.size(); i++) {
-        printf("  직선 %zu: theta = %4d도, rho = %4d, 득표 = %d\n",
-               i + 1, lines[i].theta, lines[i].rho, lines[i].votes);
-    }
-    printf("\n");
+    printLines(lines);
 
-    // 0-5. 직선 그리기
-    std::vector<unsigned char> testRgb = grayToRgb(test);
-    for (const Line& l : lines) drawLine(testRgb, tw, th, l, D);
-    stbi_write_png("results/test_result.png", tw, th, 3, testRgb.data(), tw * 3);
+    // 5. 직선 그리기
+    std::vector<unsigned char> result = grayToRgb(test);
+    for (const Line& l : lines) drawLine(result, w, h, l, D);
+    stbi_write_png("results/test_result.png", w, h, 3, result.data(), w * 3);
     printf("저장 완료: results/test_result.png\n\n");
+}
 
-    // 1. 이미지 읽기
+// ============================================================
+// 실행 2: 건물 사진에 적용
+// ============================================================
+void runBuilding() {
+    printf("===== 건물 사진 =====\n");
+
+    // 0. 이미지 읽기
     int w, h, ch;
     unsigned char* img = stbi_load("images/building_1.jpg", &w, &h, &ch, 3);  // 마지막 3: 항상 RGB 3채널로 읽기
     if (img == nullptr) {
         printf("이미지를 읽을 수 없습니다.\n");
-        return 1;
+        return;
     }
     printf("크기: %d x %d\n", w, h);
 
-    // 2. 그레이스케일 변환
-    std::vector<unsigned char> gray(w * h);
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            int i = y * w + x;                   // (x, y) 픽셀의 위치
-            unsigned char r = img[i * 3 + 0];
-            unsigned char g = img[i * 3 + 1];
-            unsigned char b = img[i * 3 + 2];
-            gray[i] = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
-        }
-    }
-
-    // 3. 저장
+    // 1. 그레이스케일 변환
+    std::vector<unsigned char> gray = toGray(img, w, h);
     stbi_write_png("results/building1_gray.png", w, h, 1, gray.data(), w);
     printf("저장 완료: results/building1_gray.png\n");
 
-    // 4. 건물 사진 이진화 (비교용: 실제 사진에는 이진화만으로 선이 남지 않음을 확인)
-    std::vector<unsigned char> grayBin = threshold(gray, 100);
-    stbi_write_png("results/building1_binary.png", w, h, 1, grayBin.data(), w);
+    // 2. 에지 검출
+    // (비교용) 이진화: 실제 사진에는 이진화만으로 선이 남지 않음을 확인
+    std::vector<unsigned char> binary = threshold(gray, 100);
+    stbi_write_png("results/building1_binary.png", w, h, 1, binary.data(), w);
     printf("저장 완료: results/building1_binary.png\n");
 
-    // 5. Sobel 에지 검출
+    // Sobel 에지 검출 -> Hough 변환의 입력으로 사용
     int edgeTh = 150;  // 그래디언트 크기 임계값
     std::vector<unsigned char> edges = sobel(gray, w, h, edgeTh);
     stbi_write_png("results/building1_edges.png", w, h, 1, edges.data(), w);
     printf("저장 완료: results/building1_edges.png\n");
 
-    // 6. Hough 변환
-    int bD, bRho, bTheta;
-    std::vector<int> bAcc = houghTransform(edges, w, h, bD, bRho, bTheta);
-    int bMax = maxOf(bAcc);
-    printf("누적 배열 크기: %d(rho) x %d(theta), D = %d, 최대 득표 = %d\n", bRho, bTheta, bD, bMax);
-    saveAccumulator("results/building1_accumulator.png", bAcc, bRho, bTheta, bMax);
+    // 3. Hough 변환 (누적 배열 + 투표)
+    int D, nRho, nTheta;
+    std::vector<int> acc = houghTransform(edges, w, h, D, nRho, nTheta);
+    int maxVote = maxOf(acc);
+    printf("누적 배열 크기: %d(rho) x %d(theta), D = %d, 최대 득표 = %d\n", nRho, nTheta, D, maxVote);
+    saveAccumulator("results/building1_accumulator.png", acc, nRho, nTheta, maxVote);
     printf("저장 완료: results/building1_accumulator.png\n");
 
-    // 7. 직선 찾기 + 그리기: 임계값을 바꿔 가며 결과 비교
+    // 4~5. 직선 찾기 + 그리기: 임계값을 바꿔 가며 결과 비교
     int voteThs[] = {500, 400, 250};
     for (int vt : voteThs) {
-        std::vector<Line> bLines = findLines(bAcc, bRho, bTheta, bD, vt, 5);
-        printf("\n[임계값 %d표] 검출된 직선: %zu개\n", vt, bLines.size());
-        for (size_t i = 0; i < bLines.size(); i++) {
-            printf("  직선 %2zu: theta = %4d도, rho = %5d, 득표 = %d\n",
-                   i + 1, bLines[i].theta, bLines[i].rho, bLines[i].votes);
-        }
+        std::vector<Line> lines = findLines(acc, nRho, nTheta, D, vt, 5);
+        printf("\n[임계값 %d표] 검출된 직선: %zu개\n", vt, lines.size());
+        printLines(lines);
 
         std::vector<unsigned char> result(img, img + w * h * 3);  // 원본 컬러 사진 복사
-        for (const Line& l : bLines) drawLine(result, w, h, l, bD);
+        for (const Line& l : lines) drawLine(result, w, h, l, D);
         char path[100];
         snprintf(path, sizeof(path), "results/building1_result_%d.png", vt);
         stbi_write_png(path, w, h, 3, result.data(), w * 3);
@@ -328,5 +375,10 @@ int main() {
     }
 
     stbi_image_free(img);
+}
+
+int main() {
+    runTest();      // 정답을 아는 테스트 영상으로 구현 검증
+    runBuilding();  // 실제 사진에 적용
     return 0;
 }
