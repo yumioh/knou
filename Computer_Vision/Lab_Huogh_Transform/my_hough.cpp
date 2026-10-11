@@ -159,7 +159,7 @@ struct Line {
     int votes;  // 득표 수
 };
 
-// 직선 찾기: 누적 배열에서 득표 수가 임계값(th) 이상인 칸을 직선으로 판정 (강의 p.13)
+// 직선 찾기: 누적 배열에서 득표 수가 임계값(th) 이상인 칸을 직선으로 판정
 //   win = 0 : 임계값만 검사
 //   win > 0 : 지역 최대 검사 추가. 주변 (2*win+1) x (2*win+1) 칸 중 가장 큰 칸만 직선으로 인정
 //             -> 한 직선의 피크 주변 칸들이 중복 검출되는 문제를 막음
@@ -245,11 +245,10 @@ void drawSegment(std::vector<unsigned char>& rgb, int w, int h, int x1, int y1, 
     }
 }
 
-// 검출된 직선 (rho, theta) 그리기 (강의 p.15)
+// 검출된 직선 (rho, theta) 그리기 
 //   (x0, y0) = (rho*cos, rho*sin) : 원점에서 직선에 내린 수선의 발 (직선 위의 한 점)
 //   (-sin, cos)                    : 직선의 방향 (법선 (cos, sin)에 수직)
 //   직선 위의 점에서 양쪽으로 len만큼 연장한 두 점을 이음
-//   강의에서는 len = 1000이지만, 영상이 커도 끝까지 그려지도록 영상 대각선 길이(D)를 사용
 void drawLine(std::vector<unsigned char>& rgb, int w, int h, const Line& line, int len) {
     const double PI = 3.14159265358979;
     double theta = line.theta * PI / 180.0;
@@ -274,7 +273,7 @@ void runTest() {
     stbi_write_png("results/test_lines.png", w, h, 1, test.data(), w);
     printf("저장 완료: results/test_lines.png\n");
 
-    // 2. 에지 검출: 이진화 (강의 예제와 같은 방식)
+    // 2. 에지 검출: 이진화
     std::vector<unsigned char> edges = threshold(test, 100);
     stbi_write_png("results/test_binary.png", w, h, 1, edges.data(), w);
     printf("저장 완료: results/test_binary.png\n");
