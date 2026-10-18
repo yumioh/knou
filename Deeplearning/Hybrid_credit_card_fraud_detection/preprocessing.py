@@ -1,69 +1,144 @@
+import json
 from pathlib import Path
 
 import kagglehub
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
 
 DATA_DIR = Path(__file__).parent / "data"
-PROCESSED_DIR = DATA_DIR / "processed"
-RANDOM_STATE = 42
+PROCESSED_DIR = DATA_DIR / "processed_ieee"
+TARGET = "isFraud"
+
+# 출력은 두 버전으로 나눔 (분할과 범주형 코드는 동일 → 두 모델의 예측을 행끼리 결합 가능)
+# - tree: LightGBM, XGBoost 등 결측치(NaN)를 스스로 처리하는 모델용 → NaN 그대로, 스케일링 없음
+# - nn  : 신경망, 오토인코더 등 NaN을 처리하지 못하는 모델용 → 결측 표시 + 중앙값 채움 + 스케일링
 
 # 1. 데이터 다운로드
-path = kagglehub.dataset_download("mlg-ulb/creditcardfraud", output_dir=str(DATA_DIR))
-df = pd.read_csv(Path(path) / "creditcard.csv")
-print("원본 크기:", df.shape)
+path = DATA_DIR / "ieee"
+# if not (path / "train_transaction.csv").exists():
+#     kagglehub.competition_download("ieee-fraud-detection", output_dir=str(path))
+# print("파일 목록:", [p.name for p in path.iterdir()])
 
-# 2. 중복 행 제거
-# 결측치는 없음, 모든 컬럼의 값이 전부 같은 행을 중복으로 봄
-# 다만 time을 기준으로 넣음. time을 빼면 9144개가 중복으로 잡히지만, 
-# 이건 시각만 다르고 금액과 패턴이 같은 서로 다른 거래일 수 있음
-# 실제 반복 결제나 사기범의 연속 시도일 수도 있으니 지우면 안됨
-# 지워진 1081개 중 19개는 사기 거래임 => 같은 값으로 기록된 거래라 기록이 중복으로 봄
-# 
-df = df.drop_duplicates().reset_index(drop=True)
-print("중복 제거 후 크기:", df.shape)
-print("클래스 분포:\n", df["Class"].value_counts())
+# 거래 정보(transaction)와 기기/신원 정보(identity)를 TransactionID로 병합
+# identity는 일부 거래에만 있으므로 left join
+transaction = pd.read_csv(path / "train_transaction.csv")
+identity = pd.read_csv(path / "train_identity.csv")
+df = transaction.merge(identity, on="TransactionID", how="left")
+del transaction, identity
+print("원본 크기:", df.shape)
+print("사기 비율:", df[TARGET].mean())
+
+# 메모리 절약: float64 → float32 (약 2GB → 1GB)
+float_cols = df.select_dtypes("float64").columns
+df[float_cols] = df[float_cols].astype(np.float32)
+df = df.copy()  # 컬럼별 형변환으로 쪼개진 메모리 정리
+
+# 2. 결측 컬럼은 제거하지 않음
+# 결측률 90%가 넘는 컬럼(D7, dist2, id_07 등)도 값이 있을 때 사기 비율이 2~4배 높아
+# "값이 있는지 없는지" 자체가 중요한 정보이기 때문
+# TransactionID는 거래마다 달라 중복 행은 없음
 
 # 3. 파생 변수
-# Time: 첫 거래 이후 경과 초(이틀치) → 하루 중 시간대(0~23)
-df["Hour"] = (df["Time"] // 3600) % 24
-# Amount: 오른쪽으로 크게 치우쳐 있어 로그 변환
-df["Amount"] = np.log1p(df["Amount"])
-df = df.drop(columns=["Time"])
-
-# 정답을 뺀 입력 변수 
-X = df.drop(columns=["Class"])
-# 정답 => 모델이 맞춰야하는 값
-y = df["Class"]
-
-# 4. 학습/검증/테스트 분할 (60/20/20), 사기 비율 유지를 위해 stratify
-# 중화추출이라는 지정한 컬럼의 비율이 나눈 묶음마다 똑같이 유지되는 옵션
+# TransactionDT: 기준 시점 이후 경과 초. 실제 날짜는 공개되지 않음
+df["Hour"] = (df["TransactionDT"] // 3600) % 24
+df["Weekday"] = (df["TransactionDT"] // 86400) % 7
+# TransactionAmt: 오른쪽으로 크게 치우쳐 있어 로그 변환
 # 
-X_train, X_temp, y_train, y_temp = train_test_split(
-    X, y, test_size=0.4, stratify=y, random_state=RANDOM_STATE
-)
-X_val, X_test, y_val, y_test = train_test_split(
-    X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=RANDOM_STATE
-)
+df["TransactionAmt"] = np.log1p(df["TransactionAmt"])
 
-# 5. 스케일링: 이상치에 강한 RobustScaler, 학습 데이터로만 fit (데이터 누수 방지)
-# V1~V28은 이미 PCA로 변환된 값이라 Amount, Hour만 스케일링
-scale_cols = ["Amount", "Hour"]
-scaler = RobustScaler()
-X_train[scale_cols] = scaler.fit_transform(X_train[scale_cols])
-X_val[scale_cols] = scaler.transform(X_val[scale_cols])
-X_test[scale_cols] = scaler.transform(X_test[scale_cols])
+# 4. 시간 순서 기준 분할 (60/20/20)
+# 실제로는 과거 거래로 학습해 미래 거래를 예측하므로 무작위로 섞지 않음
+# 무작위로 나누면 미래 정보가 학습에 섞여 점수가 실제보다 좋게 나옴
+df = df.sort_values("TransactionDT").reset_index(drop=True)
+n = len(df)
+train = df.iloc[: int(n * 0.6)].copy()
+val = df.iloc[int(n * 0.6) : int(n * 0.8)].copy()
+test = df.iloc[int(n * 0.8) :].copy()
+del df
 
-# 6. 저장
+# 5. 범주형 처리 (두 버전 공통, 학습 데이터 기준으로 fit → 데이터 누수 방지)
+# 범주형: 문자열 컬럼 + 숫자로 되어 있지만 실제로는 코드값인 컬럼
+# - 카드·주소 코드
+# - id_12 ~ id_38: 주최사(Vesta)가 범주형으로 분류한 컬럼 (id_13, id_17 등은 숫자로 저장돼 있음)
+code_cols = ["card1", "card2", "card3", "card5", "addr1", "addr2"]
+code_cols += [c for c in train.columns if c.startswith("id_") and int(c[3:]) >= 12]
+cat_cols = train.select_dtypes(exclude="number").columns.tolist()
+cat_cols += [c for c in code_cols if c not in cat_cols]
+num_cols = [
+    c for c in train.columns
+    if c not in cat_cols + ["TransactionID", "TransactionDT", TARGET]
+]
+
+# 학습 데이터에 나온 값에 1부터 번호를 붙이고, 결측·처음 보는 값은 0
+# 정수 코드라 트리 모델에도, 딥러닝 임베딩 층에도 그대로 쓸 수 있음
+cat_sizes = {}
+for col in cat_cols:
+    categories = train[col].dropna().unique()
+    mapping = {v: i + 1 for i, v in enumerate(categories)}
+    for part in (train, val, test):
+        part[col] = part[col].map(mapping).fillna(0).astype(np.int32)
+    cat_sizes[col] = len(categories) + 1  # 0번(결측·미등록) 포함
+
+splits = {"train": train, "val": val, "test": test}
+
+
+def save(version, parts):
+    out_dir = PROCESSED_DIR / version
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, part in parts.items():
+        part.to_parquet(out_dir / f"{name}.parquet", index=False)
+        print(f"[{version}] {name}: {part.shape}, 사기 비율 {part[TARGET].mean():.4%}")
+
+
+# 6-1. tree 버전: 수치형 결측치를 NaN 그대로 저장
+# 트리 모델은 NaN을 별도 갈래로 보내 "비어 있음" 자체를 학습함
+save("tree", splits)
+
+# 6-2. nn 버전
+# (1) 결측 표시 컬럼: 결측 위치가 완전히 같은 컬럼끼리 묶어 그룹당 1개만 추가
+#     예) V1~V11은 항상 같은 행에서 함께 비어 있음 → 11개 대신 na_V1 하나
+#     컬럼마다 붙이면 똑같은 0/1 컬럼이 수백 개 생겨 메모리만 늘고 정보는 같음
+na_groups = {}
+for col in num_cols:
+    is_na = train[col].isna()
+    if is_na.any():
+        na_groups.setdefault(is_na.values.tobytes(), []).append(col)
+na_groups = {f"na_{cols[0]}": cols for cols in na_groups.values()}
+print(f"결측이 있는 수치형 {sum(map(len, na_groups.values()))}개 → 결측 표시 {len(na_groups)}개")
+
+# (2) 결측치는 학습 데이터 중앙값으로 채우고 RobustScaler 적용
+medians = train[num_cols].median().fillna(0)
+scaler = RobustScaler().fit(train[num_cols].fillna(medians))
+
+nn_splits = {}
+for name, part in splits.items():
+    # 그룹 안에서 하나라도 비어 있으면 1 (val/test에서 패턴이 조금 달라도 안전하게)
+    na_flags = pd.DataFrame(
+        {flag: part[cols].isna().any(axis=1).astype(np.int8) for flag, cols in na_groups.items()},
+        index=part.index,
+    )
+    scaled = pd.DataFrame(
+        scaler.transform(part[num_cols].fillna(medians)).astype(np.float32),
+        columns=num_cols,
+        index=part.index,
+    )
+    nn_splits[name] = pd.concat(
+        [part[["TransactionID", "TransactionDT", TARGET] + cat_cols], scaled, na_flags], axis=1
+    )
+save("nn", nn_splits)
+
+# 7. 모델 학습 때 필요한 컬럼 정보 (임베딩 층 크기 등)
 # 오버샘플링(SMOTE 등)은 모델 학습 단계에서 학습 데이터에만 적용할 것
-PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-for name, X_part, y_part in [
-    ("train", X_train, y_train),
-    ("val", X_val, y_val),
-    ("test", X_test, y_test),
-]:
-    part = X_part.assign(Class=y_part)
-    part.to_csv(PROCESSED_DIR / f"{name}.csv", index=False)
-    print(f"{name}: {part.shape}, 사기 비율 {y_part.mean():.4%}")
+# 오토인코더는 학습 단계에서 정상 거래(isFraud == 0)만 골라 학습시킬 것
+meta = {
+    "target": TARGET,
+    "cat_cols": cat_cols,
+    "num_cols": num_cols,
+    "cat_sizes": cat_sizes,
+    "na_flag_cols": list(na_groups),  # nn 버전에만 있음
+    "na_groups": na_groups,
+}
+with open(PROCESSED_DIR / "meta.json", "w", encoding="utf-8") as f:
+    json.dump(meta, f, ensure_ascii=False, indent=2)
+print(f"범주형 {len(cat_cols)}개, 수치형 {len(num_cols)}개, 결측 표시 {len(na_groups)}개")
