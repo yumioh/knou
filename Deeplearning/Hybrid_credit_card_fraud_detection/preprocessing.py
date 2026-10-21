@@ -43,8 +43,8 @@ df = df.copy()  # 컬럼별 형변환으로 쪼개진 메모리 정리
 # TransactionDT: 기준 시점 이후 경과 초. 실제 날짜는 공개되지 않음
 df["Hour"] = (df["TransactionDT"] // 3600) % 24
 df["Weekday"] = (df["TransactionDT"] // 86400) % 7
+
 # TransactionAmt: 오른쪽으로 크게 치우쳐 있어 로그 변환
-# 
 df["TransactionAmt"] = np.log1p(df["TransactionAmt"])
 
 # 4. 시간 순서 기준 분할 (60/20/20)
@@ -61,10 +61,14 @@ del df
 # 범주형: 문자열 컬럼 + 숫자로 되어 있지만 실제로는 코드값인 컬럼
 # - 카드·주소 코드
 # - id_12 ~ id_38: 주최사(Vesta)가 범주형으로 분류한 컬럼 (id_13, id_17 등은 숫자로 저장돼 있음)
+
+# 숫자로 저정된 범주형은 사람이 직접 목록을 적어 추가
 code_cols = ["card1", "card2", "card3", "card5", "addr1", "addr2"]
 code_cols += [c for c in train.columns if c.startswith("id_") and int(c[3:]) >= 12]
+# 범주형 컬럼만 추출 
 cat_cols = train.select_dtypes(exclude="number").columns.tolist()
 cat_cols += [c for c in code_cols if c not in cat_cols]
+# 수치형 컬럼만 추출
 num_cols = [
     c for c in train.columns
     if c not in cat_cols + ["TransactionID", "TransactionDT", TARGET]
