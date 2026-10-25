@@ -15,10 +15,12 @@ TARGET = "isFraud"
 # - nn  : 신경망, 오토인코더 등 NaN을 처리하지 못하는 모델용 → 결측 표시 + 중앙값 채움 + 스케일링
 
 # 1. 데이터 다운로드
+# 대회 데이터라 competition_download 사용 (Kaggle에서 규칙 동의 필요)
+# 폴더가 비어 있지 않으면 오류가 나므로, 이미 받았으면 다운로드 생략
 path = DATA_DIR / "ieee"
-# if not (path / "train_transaction.csv").exists():
-#     kagglehub.competition_download("ieee-fraud-detection", output_dir=str(path))
-# print("파일 목록:", [p.name for p in path.iterdir()])
+if not (path / "train_transaction.csv").exists():
+    kagglehub.competition_download("ieee-fraud-detection", output_dir=str(path))
+print("파일 목록:", [p.name for p in path.iterdir()])
 
 # 거래 정보(transaction)와 기기/신원 정보(identity)를 TransactionID로 병합
 # identity는 일부 거래에만 있으므로 left join
@@ -57,12 +59,12 @@ val = df.iloc[int(n * 0.6) : int(n * 0.8)].copy()
 test = df.iloc[int(n * 0.8) :].copy()
 del df
 
-# 5. 범주형 처리 (두 버전 공통, 학습 데이터 기준으로 fit → 데이터 누수 방지)
+# 5. 범주형 처리 (두 버전 공통)
 # 범주형: 문자열 컬럼 + 숫자로 되어 있지만 실제로는 코드값인 컬럼
 # - 카드·주소 코드
 # - id_12 ~ id_38: 주최사(Vesta)가 범주형으로 분류한 컬럼 (id_13, id_17 등은 숫자로 저장돼 있음)
 
-# 숫자로 저정된 범주형은 사람이 직접 목록을 적어 추가
+# 숫자로 저장된 범주형은 사람이 직접 목록을 적어 추가
 code_cols = ["card1", "card2", "card3", "card5", "addr1", "addr2"]
 code_cols += [c for c in train.columns if c.startswith("id_") and int(c[3:]) >= 12]
 # 범주형 컬럼만 추출 
@@ -75,6 +77,7 @@ num_cols = [
 ]
 
 # 학습 데이터에 나온 값에 1부터 번호를 붙이고, 결측·처음 보는 값은 0
+# 학습 데이터 기준으로만 번호를 정함 → val/test 정보가 섞이지 않게 (데이터 누수 방지)
 # 정수 코드라 트리 모델에도, 딥러닝 임베딩 층에도 그대로 쓸 수 있음
 cat_sizes = {}
 for col in cat_cols:
@@ -85,7 +88,6 @@ for col in cat_cols:
     cat_sizes[col] = len(categories) + 1  # 0번(결측·미등록) 포함
 
 splits = {"train": train, "val": val, "test": test}
-
 
 def save(version, parts):
     out_dir = PROCESSED_DIR / version
@@ -101,7 +103,8 @@ save("tree", splits)
 
 # 6-2. nn 버전
 # (1) 결측 표시 컬럼: 결측 위치가 완전히 같은 컬럼끼리 묶어 그룹당 1개만 추가
-#     예) V1~V11은 항상 같은 행에서 함께 비어 있음 → 11개 대신 na_V1 하나
+#     예) D11, V1~V11은 항상 같은 행에서 함께 비어 있음 → 12개 대신 na_D11 하나
+#     (그룹 이름은 그룹에서 가장 먼저 나오는 컬럼 이름을 따름)
 #     컬럼마다 붙이면 똑같은 0/1 컬럼이 수백 개 생겨 메모리만 늘고 정보는 같음
 na_groups = {}
 for col in num_cols:
@@ -122,8 +125,13 @@ for name, part in splits.items():
         {flag: part[cols].isna().any(axis=1).astype(np.int8) for flag, cols in na_groups.items()},
         index=part.index,
     )
+    # (3) 부호 유지 로그 변환: sign(x) * log(1 + |x|)
+    #     C, V 컬럼은 대부분 0·1이라 IQR이 매우 작아, 드문 큰 값이 스케일링 후 수십만까지 커짐
+    #     신경망은 이런 극단값에 학습이 휘둘리므로 크기를 줄임 (최대 약 88만 → 약 14)
+    scaled_values = scaler.transform(part[num_cols].fillna(medians))
+    scaled_values = np.sign(scaled_values) * np.log1p(np.abs(scaled_values))
     scaled = pd.DataFrame(
-        scaler.transform(part[num_cols].fillna(medians)).astype(np.float32),
+        scaled_values.astype(np.float32),
         columns=num_cols,
         index=part.index,
     )
@@ -135,6 +143,7 @@ save("nn", nn_splits)
 # 7. 모델 학습 때 필요한 컬럼 정보 (임베딩 층 크기 등)
 # 오버샘플링(SMOTE 등)은 모델 학습 단계에서 학습 데이터에만 적용할 것
 # 오토인코더는 학습 단계에서 정상 거래(isFraud == 0)만 골라 학습시킬 것
+# 정상거래만 학습하는 이유는 사기 거래인 경우 처음 보는 패턴이라 복원이 잘 되지 않음
 meta = {
     "target": TARGET,
     "cat_cols": cat_cols,

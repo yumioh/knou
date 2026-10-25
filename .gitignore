@@ -10,3 +10,4 @@
 *.parquet
 .complete/
 data/
+models/

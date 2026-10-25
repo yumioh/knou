@@ -4,29 +4,29 @@ from pathlib import Path
 
 """
 openCV 얼굴 탬플릿 매칭
-1. 특징 이미지 준비
+  1. 특징 이미지 준비
  - 내 얼굴 사진(images/face_photo.jpg)을 적당한 크기로 줄여서
    특징 이미지(images/my_face.jpg)로 저장
-2. 웹캠 매칭
+
+   2. 웹캠 매칭
  - 웹캠 실시간 영상에서 특징 이미지와 가장 잘 맞는 영역 선택
  - 매칭된 영역에 빨간 색 굵은 사각형 표시
 
- while True:
-   웹캠에서 한 장 읽기 (cap.read)
+   3. 웹캠에서 한 장 읽기 (cap.read)
    → 좌우 반전 (MIRROR)
-   → ① 흑백 사본으로 얼굴 찾기
-   → ② 점수 0.55 이상이면 빨간 사각형 + 점수
-   → ③ 왼쪽 위에 score / width 표시
-   → ④ 화면에 띄우고 키 확인
-   → ⑤ q/ESC면 종료, +/-면 크기 조절
-⑥ 웹캠 해제, 창 닫기
+   → 흑백 사본으로 얼굴 찾기
+   → 점수 0.55 이상이면 빨간 사각형 + 점수
+   → 왼쪽 위에 score / width 표시
+   → 화면에 띄우고 키 확인
+   → q/ESC면 종료, +/-면 크기 조절
+     웹캠 해제, 창 닫기
 
 """
 
 DATA_DIR = Path(__file__).parent / "images"
 PHOTO_PATH = DATA_DIR / "face_photo.jpg"  # 준비한 내 얼굴 사진 (원본)
 TEMPLATE_PATH = DATA_DIR / "my_face.jpg"  # 크기를 맞춰 저장한 특징 이미지
-TEMPLATE_WIDTH = 200            # 템플릿 가로 크기(px) - 실습하며 조절 (웹캠 화면 640px 기준)
+TEMPLATE_WIDTH = 220            # 템플릿 가로 크기(px) - 실습하며 조절 (웹캠 화면 640px 기준)
 SIZE_STEP = 20                  # +/- 한 번에 바뀌는 크기(px)
 THRESHOLD = 0.55                # 이 값 이상일 때만 매칭으로 인정 (0~1)
 SCALES = np.linspace(0.7, 1.3, 7)  # 거리 변화 대응용 다중 스케일
@@ -142,7 +142,7 @@ def main() :
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
         cv2.imshow("face template matching", frame)
-        # 키입력 wait
+        # & 0xFF : 키 코드(마지막 8비트)만 남김
         key = cv2.waitKey(1) & 0xFF
         if key in (ord('q'), 27):
             break
