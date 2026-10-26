@@ -81,10 +81,19 @@ num_cols = [
 # 학습 데이터에 나온 값에 1부터 번호를 붙이고, 결측·처음 보는 값은 0
 # 학습 데이터 기준으로만 번호를 정함 → val/test 정보가 섞이지 않게 (데이터 누수 방지)
 # 정수 코드라 트리 모델에도, 딥러닝 임베딩 층에도 그대로 쓸 수 있음
-# 범주형 컬럼의 값을 정수 번호로 바꾸는 코드 
+# 범주형 컬럼의 값을 정수 번호로 바꾸는 코드
+# 번호는 train에서 처음 등장한 순서로 붙임 (train은 시간순 정렬 상태)
+# → 번호가 작을수록 일찍부터 쓰이던 값, 클수록 늦게 처음 나타난(새로운) 값
+# LightGBM이 범주형으로 지정하지 않은 컬럼(card1 등)은 번호를 크기로 보므로
+# "번호 > 8000" 같은 분할이 "최근에 처음 나타난 카드인가"라는 의미를 가짐
+#
+# 다른 방식도 실험했으나 이 방식이 가장 단순하면서 val 점수가 가장 좋았음 (LightGBM, seed 42)
+#   처음 등장 순서 (현재)          : ROC-AUC 0.9333 / PR-AUC 0.6294
+#   많이 나온 순서                  : 0.9315 / 0.6205
+#   많이 나온 순서 + 빈도 변수 49개 : 0.9334 / 0.6294 (변수만 늘고 이득 없음)
 cat_sizes = {}
 for col in cat_cols:
-    categories = train[col].dropna().unique()
+    categories = train[col].dropna().unique()  # 처음 나온 순서대로, 결측 제외
     mapping = {v: i + 1 for i, v in enumerate(categories)}
     for part in (train, val, test):
         part[col] = part[col].map(mapping).fillna(0).astype(np.int32)
