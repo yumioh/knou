@@ -15,7 +15,7 @@ TARGET = "isFraud"
 # - nn  : 신경망, 오토인코더 등 NaN을 처리하지 못하는 모델용 → 결측 표시 + 중앙값 채움 + 스케일링
 
 # 1. 데이터 다운로드
-# 대회 데이터라 competition_download 사용 (Kaggle에서 규칙 동의 필요)
+# 대회 데이터라 competition_download 사용
 # 폴더가 비어 있지 않으면 오류가 나므로, 이미 받았으면 다운로드 생략
 path = DATA_DIR / "ieee"
 if not (path / "train_transaction.csv").exists():
@@ -43,6 +43,8 @@ df = df.copy()  # 컬럼별 형변환으로 쪼개진 메모리 정리
 
 # 3. 파생 변수
 # TransactionDT: 기준 시점 이후 경과 초. 실제 날짜는 공개되지 않음
+# 한시간의 초 : 86400, 하루의 초 : 86400
+# 시간과 몇번째 요일인지 구분
 df["Hour"] = (df["TransactionDT"] // 3600) % 24
 df["Weekday"] = (df["TransactionDT"] // 86400) % 7
 
@@ -54,15 +56,15 @@ df["TransactionAmt"] = np.log1p(df["TransactionAmt"])
 # 무작위로 나누면 미래 정보가 학습에 섞여 점수가 실제보다 좋게 나옴
 df = df.sort_values("TransactionDT").reset_index(drop=True)
 n = len(df)
-train = df.iloc[: int(n * 0.6)].copy()
-val = df.iloc[int(n * 0.6) : int(n * 0.8)].copy()
-test = df.iloc[int(n * 0.8) :].copy()
+train = df.iloc[: int(n * 0.6)].copy() # 0~ 354, 323번
+val = df.iloc[int(n * 0.6) : int(n * 0.8)].copy() # 354, 324번 ~ 472번, 431번 
+test = df.iloc[int(n * 0.8) :].copy()  # 472,432번 ~ 끝
 del df
 
 # 5. 범주형 처리 (두 버전 공통)
 # 범주형: 문자열 컬럼 + 숫자로 되어 있지만 실제로는 코드값인 컬럼
-# - 카드·주소 코드
-# - id_12 ~ id_38: 주최사(Vesta)가 범주형으로 분류한 컬럼 (id_13, id_17 등은 숫자로 저장돼 있음)
+# 카드·주소 코드
+# id_12 ~ id_38: 주최사(Vesta)가 범주형으로 분류한 컬럼 (id_13, id_17 등은 숫자로 저장돼 있음)
 
 # 숫자로 저장된 범주형은 사람이 직접 목록을 적어 추가
 code_cols = ["card1", "card2", "card3", "card5", "addr1", "addr2"]
@@ -79,6 +81,7 @@ num_cols = [
 # 학습 데이터에 나온 값에 1부터 번호를 붙이고, 결측·처음 보는 값은 0
 # 학습 데이터 기준으로만 번호를 정함 → val/test 정보가 섞이지 않게 (데이터 누수 방지)
 # 정수 코드라 트리 모델에도, 딥러닝 임베딩 층에도 그대로 쓸 수 있음
+# 범주형 컬럼의 값을 정수 번호로 바꾸는 코드 
 cat_sizes = {}
 for col in cat_cols:
     categories = train[col].dropna().unique()
@@ -101,11 +104,9 @@ def save(version, parts):
 # 트리 모델은 NaN을 별도 갈래로 보내 "비어 있음" 자체를 학습함
 save("tree", splits)
 
-# 6-2. nn 버전
-# (1) 결측 표시 컬럼: 결측 위치가 완전히 같은 컬럼끼리 묶어 그룹당 1개만 추가
+# 6-2. nn 버전 : null 값이 없는 데이터 
+# (1) 결측 표시 컬럼:  결측 위치가 똑같은 수치형 컬럼들을 찾아 한 그룹으로 묶는 부분
 #     예) D11, V1~V11은 항상 같은 행에서 함께 비어 있음 → 12개 대신 na_D11 하나
-#     (그룹 이름은 그룹에서 가장 먼저 나오는 컬럼 이름을 따름)
-#     컬럼마다 붙이면 똑같은 0/1 컬럼이 수백 개 생겨 메모리만 늘고 정보는 같음
 na_groups = {}
 for col in num_cols:
     is_na = train[col].isna()
@@ -115,21 +116,26 @@ na_groups = {f"na_{cols[0]}": cols for cols in na_groups.values()}
 print(f"결측이 있는 수치형 {sum(map(len, na_groups.values()))}개 → 결측 표시 {len(na_groups)}개")
 
 # (2) 결측치는 학습 데이터 중앙값으로 채우고 RobustScaler 적용
+#  중앙값 채우기와 결측 표시는 한 세트
 medians = train[num_cols].median().fillna(0)
 scaler = RobustScaler().fit(train[num_cols].fillna(medians))
 
 nn_splits = {}
 for name, part in splits.items():
-    # 그룹 안에서 하나라도 비어 있으면 1 (val/test에서 패턴이 조금 달라도 안전하게)
+    # 그룹 안에서 하나라도 비어 있으면 1  =>  결측 표시 컬럼 만들기
+    # 그룹에 속한 컬럼들의 결측 여부를 확인
+    # 행마다 그중에 하나라도 비어 있으면 True => 가로 방향이라는 뜻
+    # astype : 0 or 1로 바뀜
     na_flags = pd.DataFrame(
         {flag: part[cols].isna().any(axis=1).astype(np.int8) for flag, cols in na_groups.items()},
         index=part.index,
     )
-    # (3) 부호 유지 로그 변환: sign(x) * log(1 + |x|)
-    #     C, V 컬럼은 대부분 0·1이라 IQR이 매우 작아, 드문 큰 값이 스케일링 후 수십만까지 커짐
-    #     신경망은 이런 극단값에 학습이 휘둘리므로 크기를 줄임 (최대 약 88만 → 약 14)
-    scaled_values = scaler.transform(part[num_cols].fillna(medians))
-    scaled_values = np.sign(scaled_values) * np.log1p(np.abs(scaled_values))
+    # 결측 채우기 -> 스케일링 -> 로그변환
+    # 그냥 log를 쓰지 않는 이유는 스케일링하면 음수가 생기기 때문
+    # np.log1p(...): log(1 + 크기)로 큰 값을 줄입니다
+    # scaler.transform은 컬럼 이름이 없는 숫자 배열을 돌려줍니다. 
+    scaled_values = scaler.transform(part[num_cols].fillna(medians))    # 중앙값으로 채움
+    scaled_values = np.sign(scaled_values) * np.log1p(np.abs(scaled_values)) # 남은 극단값 줄임
     scaled = pd.DataFrame(
         scaled_values.astype(np.float32),
         columns=num_cols,
