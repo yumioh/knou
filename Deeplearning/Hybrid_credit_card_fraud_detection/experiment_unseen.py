@@ -239,13 +239,24 @@ def recall_at_top(full_score, mask, rate):
     return (full_score[fraud] >= threshold).mean()
 
 
+def precision_at_top(full_score, mask, rate):
+    """전체 test에서 점수 상위 rate를 검토할 때, 검토 대상 중 mask 집단 거래가 몇 건이고 그중 사기 비율은?
+    재현율만 보면 집단 거래를 통째로(정상까지) 위로 올린 모델도 좋아 보이므로 함께 확인"""
+    threshold = np.quantile(full_score, 1 - rate)
+    flagged = mask & (full_score >= threshold)
+    n_flagged = int(flagged.sum())
+    return n_flagged, (y["test"][flagged].mean() if n_flagged else np.nan)
+
+
 def evaluate(full_score, mask):
     ys, ss = y["test"][mask], full_score[mask]
-    return {
-        "ROC-AUC": roc_auc_score(ys, ss),
-        "PR-AUC": average_precision_score(ys, ss),
-        **{f"상위{int(r * 100)}%재현율": recall_at_top(full_score, mask, r) for r in TOP_RATES},
-    }
+    out = {"ROC-AUC": roc_auc_score(ys, ss), "PR-AUC": average_precision_score(ys, ss)}
+    for r in TOP_RATES:
+        n_flagged, precision = precision_at_top(full_score, mask, r)
+        out[f"상위{int(r * 100)}%재현율"] = recall_at_top(full_score, mask, r)
+        out[f"상위{int(r * 100)}%정밀도"] = precision
+        out[f"상위{int(r * 100)}%검토건수"] = n_flagged
+    return out
 
 
 # LightGBM 입력 구성: 기본(모든 변수) / ProductCD 제외(지름길 점검)
@@ -374,7 +385,7 @@ paper.to_csv(RESULT_DIR / "unseen_paper_table.csv", encoding="utf-8-sig")
 # 8. 요약 출력
 pd.set_option("display.width", 250)
 pd.set_option("display.max_columns", 30)
-metric_cols = ["ROC-AUC", "PR-AUC"] + [f"상위{int(r * 100)}%재현율" for r in TOP_RATES]
+metric_cols = ["ROC-AUC", "PR-AUC"] + [f"상위{int(r * 100)}%{m}" for r in TOP_RATES for m in ("재현율", "정밀도")]
 summary = results.groupby(["평가 집단", "모델"], sort=False)[metric_cols].mean()
 print("\n[유형 5개 x seed 3개 평균]\n", summary.round(4).to_string())
 by_type = results[results["평가 집단"] == "미관측 유형"].pivot_table(

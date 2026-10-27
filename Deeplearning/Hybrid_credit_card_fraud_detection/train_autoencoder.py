@@ -13,8 +13,8 @@ MODEL_DIR = BASE_DIR / "models"
 PRED_DIR = BASE_DIR / "data" / "predictions"
 
 BATCH_SIZE = 1024 # 한번의 거래 1024건씩 보고 가중치를 고친다는 의미
-MAX_EPOCHS = 30 # 문제집을 최대 30바퀴까지만 돈다는 상한선
-PATIENCE = 3  # val 점수가 3에폭 연속 좋아지지 않으면 멈춘다는 조기 종료 기준 => 1에폭 = 가중치 340번 수정
+MAX_EPOCHS = 100 # 문제집을 최대 100바퀴까지만 돈다는 상한선 (라벨 없는 기준은 오래 좋아져서 30이면 끝까지 감)
+PATIENCE = 3  # val 정상 거래 복원 오차가 3에폭 연속 좋아지지 않으면 멈춘다는 조기 종료 기준 => 1에폭 = 가중치 340번 수정
 torch.manual_seed(42) # 무작위 시작점을 42로 고정
 
 # 1. 데이터 불러오기 (preprocessing.py의 nn 버전: 결측 채움 + 결측 표시 + 스케일링)
@@ -99,12 +99,15 @@ def anomaly_score(df):
 
 
 # 3. 학습
-# 모델 선택은 검증 데이터(사기 포함)의 ROC-AUC로 함
-# → 복원을 잘하는 모델이 아니라 "사기와 정상을 잘 구분하는" 모델을 고르기 위해
+# 모델 선택은 사기 라벨 없이 함: val "정상 거래"의 평균 복원 오차가 가장 작은 에폭
+# → 사기 라벨로 고르면(이전 방식) 어떤 사기가 있는지 간접적으로 알게 되어 "미관측 사기 탐지"라고 주장하기 어려움
+#   experiment_unseen.py와 같은 방식
+# val ROC-AUC는 진행 상황을 보는 참고용으로만 출력하고 선택에는 쓰지 않음
 # 오토인코더 학습 → 조기 종료 → 평가 → 저장
-# best_auc : 최고 점수 / best_state : 모델의 가중치 / bad_epochs : 최고 점수를 못 넘은 에폭이 몇 번 연속인지
-best_auc, best_state, bad_epochs = 0.0, None, 0
-for epoch in range(1, MAX_EPOCHS + 1): # 최대 30에폭 반복
+# best_loss : 가장 작은 복원 오차 / best_state : 모델의 가중치 / bad_epochs : 최고 기록을 못 넘은 에폭이 몇 번 연속인지
+val_normal = splits["val"][splits["val"][target] == 0]
+best_loss, best_state, best_epoch, bad_epochs = np.inf, None, 0, 0
+for epoch in range(1, MAX_EPOCHS + 1): # 최대 MAX_EPOCHS 에폭 반복
     model.train()
     perm = torch.randperm(len(x_num_train)) # 0부터 (학습 거래 수 − 1)까지의 번호를 무작위로 섞임 => 배치 전체를 하나의 숫자로 평균
     total_loss = 0.0
@@ -118,10 +121,12 @@ for epoch in range(1, MAX_EPOCHS + 1): # 최대 30에폭 반복
         total_loss += loss.item() * len(idx)
 
     val_score = anomaly_score(splits["val"])
-    val_auc = roc_auc_score(splits["val"][target], val_score)
-    print(f"epoch {epoch:2d} | 학습 복원 오차 {total_loss / len(perm):.4f} | val ROC-AUC {val_auc:.4f}")
-    if val_auc > best_auc:
-        best_auc, bad_epochs = val_auc, 0
+    val_loss = anomaly_score(val_normal).mean()  # 선택 기준: val 정상 거래의 평균 복원 오차
+    val_auc = roc_auc_score(splits["val"][target], val_score)  # 참고용
+    print(f"epoch {epoch:2d} | 학습 복원 오차 {total_loss / len(perm):.4f} | "
+          f"val 정상 복원 오차 {val_loss:.4f} | (참고) val ROC-AUC {val_auc:.4f}")
+    if val_loss < best_loss:
+        best_loss, best_epoch, bad_epochs = val_loss, epoch, 0
         best_state = {k: v.clone() for k, v in model.state_dict().items()}
     else:
         bad_epochs += 1
@@ -130,6 +135,7 @@ for epoch in range(1, MAX_EPOCHS + 1): # 최대 30에폭 반복
             break
 
 model.load_state_dict(best_state) # 가장 성적이 좋았던 순간의 가중치로 모델을 되돌리는 코드
+print(f"선택한 에폭: {best_epoch}")
 
 # 4. 평가
 scores = {} 
